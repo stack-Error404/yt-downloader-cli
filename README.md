@@ -1,36 +1,83 @@
-# Error404 // Media Console
+Error404 // Media Console
 
-Downloader para **CachyOS / Arch Linux**, criado por **Error404**. Versão 1.0.0.
+Downloader em terminal para CachyOS e Arch Linux, criado por Error404.
 
-Menu no terminal com fundo preto e texto em verde e vermelho neon (RGB real), vídeo ou playlist em MP4, áudio MP3, escolha manual de formato, abertura da pasta e retorno ao menu após cada download. Salva por padrão em `~/Downloads/YouTube`. As cores dependem do suporte do terminal a True Color; `NO_COLOR=1 yt` desativa as cores.
+Baixe vídeos individuais ou playlists em MP4 e extraia áudio em MP3. O menu também permite escolher o formato manualmente, abrir a pasta de downloads e voltar ao menu após cada operação.
 
-## Instalar pelo GitHub (após publicar o repositório)
+Instalação rápida
 
-```bash
 curl -fsSL https://raw.githubusercontent.com/stack-Error404/yt-downloader-cli/main/install.sh | bash
-```
 
-O instalador baixa `yt`, instala as dependências necessárias e abre o menu. Confira os arquivos e o endereço antes de executar um instalador remoto.
+O instalador verifica yt-dlp e ffmpeg, instala as dependências ausentes com pacman, copia o comando para ~/.local/bin/yt e abre o menu. Confira o código antes de executar qualquer instalador remoto.
 
-## Instalar pela pasta do projeto
+Em um novo terminal, execute:
 
-Copie esta pasta para `/home/calunga/Projetos/yt-downloader-cli`. No terminal:
+yt
 
-```bash
-cd ~/Projetos/yt-downloader-cli
+Instalação a partir de um clone
+
+git clone https://github.com/stack-Error404/yt-downloader-cli.git
+cd yt-downloader-cli
 bash install.sh
-```
 
-O instalador usa `pacman` para instalar `yt-dlp` e `ffmpeg` se faltarem, instala `yt` em `~/.local/bin` e abre o menu. Para usar depois, abra um **novo terminal** e digite `yt`. Para rodar sem instalar: `sudo pacman -S --needed yt-dlp ffmpeg` e `bash yt`.
+Para executar sem instalar, instale as dependências e rode bash yt dentro da pasta clonada.
 
-## Publicar no GitHub
+Recursos
 
-Crie o repositório público **`yt-downloader-cli`** na conta **`stack-Error404`** e envie os arquivos **`yt`**, **`install.sh`** e **`README.md`** para a **raiz** da branch `main`. Endereço esperado: <https://github.com/stack-Error404/yt-downloader-cli>.
+Opção
 
-O comando remoto acima só funcionará **depois que esses arquivos estiverem publicados** nesse endereço. Caso escolha outro nome de repositório ou branch, atualize os endereços em `README.md`, `install.sh` e `yt` antes de publicar.
+Ação
 
-## Personalizar e atualizar
+1
 
-Use `YT_DOWNLOAD_DIR="$HOME/Videos/YouTube" yt` para mudar a pasta numa execução. A opção 7 atualiza as dependências pelos repositórios do sistema. Para atualizar **o script**, copie os arquivos novos para esta pasta e execute `bash install.sh` novamente, ou repita o comando remoto depois de publicar a nova versão.
+Baixar vídeo em MP4
 
-O MP4 pode exigir conversão por `ffmpeg` quando o vídeo disponível usa outro codec; isso demora mais e pode aumentar o uso de CPU. A disponibilidade dos formatos depende do vídeo. Alguns vídeos podem exigir autenticação ou ter restrições de download. Use conteúdo cujo download você esteja autorizado a fazer.
+2
+
+Extrair áudio em MP3
+
+3
+
+Baixar playlist em MP4
+
+4
+
+Baixar playlist em MP3
+
+5
+
+Escolher formato de vídeo e áudio
+
+6
+
+Abrir a pasta de downloads
+
+7
+
+Atualizar yt-dlp e ffmpeg pelo pacman
+
+8
+
+Ver informações do projeto
+
+Os arquivos vão para ~/Downloads/YouTube. Playlists ficam em subpastas. Para escolher outra pasta em uma execução:
+
+YT_DOWNLOAD_DIR="$HOME/Videos/YouTube" yt
+
+O menu usa fundo preto e texto vermelho e verde neon em terminais com suporte a True Color. Para desativar as cores, execute NO_COLOR=1 yt.
+
+Atualização
+
+Para atualizar o programa, execute novamente o comando de Instalação rápida. A opção 7 do menu atualiza somente yt-dlp e ffmpeg.
+
+Notas
+
+A conversão para MP4 pode demorar quando os formatos disponíveis usam outros codecs.
+
+A disponibilidade de formatos depende do vídeo. Alguns conteúdos exigem autenticação ou têm restrições.
+
+Baixe apenas conteúdos cujo download você esteja autorizado a fazer.
+
+Licença
+
+MIT. Veja o arquivo LICENSE deste repositório.
