@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#050705">
+  <meta name="description" content="Error404 // Media Console: baixe vídeos e playlists em MP4 ou MP3 pelo terminal no CachyOS e Arch Linux.">
+  <title>Error404 // Media Console</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #050705;
+      --panel: #0b100d;
+      --panel-2: #101711;
+      --line: #25432d;
+      --text: #ecf6ec;
+      --muted: #a7b9a8;
+      --green: #39ff14;
+      --red: #ff2446;
+      --mono: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; min-width: 320px; color: var(--text); background: var(--bg); }
+    body::before {
+      content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .36;
+      background: radial-gradient(circle at 75% 14%, #173c20 0, transparent 32%),
+                  linear-gradient(transparent 96%, #112317 100%);
+      background-size: auto, 100% 5px;
+    }
+    a { color: inherit; }
+    a:focus-visible, button:focus-visible { outline: 2px solid var(--green); outline-offset: 4px; }
+    .wrap { width: min(1120px, calc(100% - 48px)); margin-inline: auto; position: relative; }
+    header { border-bottom: 1px solid var(--line); }
+    .topbar { min-height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+    .brand { font: 800 1rem var(--mono); letter-spacing: .015em; text-decoration: none; color: var(--green); }
+    .brand span { color: var(--red); }
+    nav { display: flex; gap: clamp(14px, 3vw, 30px); align-items: center; }
+    nav a { font-size: .9rem; font-weight: 650; text-decoration: none; color: var(--muted); }
+    nav a:hover { color: var(--green); }
+    .hero { padding: clamp(58px, 9vw, 118px) 0 clamp(70px, 9vw, 110px); display: grid; grid-template-columns: 1.12fr .88fr; align-items: center; gap: clamp(32px, 6vw, 78px); }
+    .eyebrow { color: var(--green); font: 700 .8rem var(--mono); letter-spacing: .16em; text-transform: uppercase; }
+    h1 { font-size: clamp(2.55rem, 6vw, 5rem); line-height: 1.04; letter-spacing: -.06em; margin: 21px 0 25px; max-width: 680px; }
+    h1 em { display: block; color: var(--red); font-style: normal; }
+    .lead { color: var(--muted); font-size: clamp(1.05rem, 1.8vw, 1.25rem); line-height: 1.62; max-width: 570px; margin: 0 0 32px; }
+    .install-label { font: 700 .77rem var(--mono); color: var(--green); letter-spacing: .12em; text-transform: uppercase; margin: 0 0 10px; }
+    .command { display: flex; align-items: stretch; background: var(--panel); border: 1px solid #3d7447; border-radius: 12px; max-width: 630px; overflow: hidden; }
+    .command code { padding: 17px 16px; display: block; overflow-x: auto; white-space: nowrap; scrollbar-width: thin; flex: 1; min-width: 0; font: 500 .88rem/1.55 var(--mono); color: #def7dc; }
+    .command code b { color: var(--red); font-weight: 700; }
+    .command button { border: 0; border-left: 1px solid #3d7447; background: #152718; color: var(--green); font: 700 .85rem var(--mono); padding: 0 17px; cursor: pointer; min-width: 83px; }
+    .command button:hover { background: #203a24; }
+    .hint { margin: 12px 0 0; color: var(--muted); font-size: .87rem; line-height: 1.5; }
+    .links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+    .btn { border: 1px solid var(--line); border-radius: 9px; padding: 13px 18px; text-decoration: none; font-weight: 700; font-size: .9rem; }
+    .btn-primary { color: #071008; background: var(--green); border-color: var(--green); }
+    .btn-primary:hover { background: #84ff6c; }
+    .btn-secondary:hover { color: var(--green); border-color: var(--green); }
+    .terminal { border: 1px solid var(--green); background: #000; border-radius: 10px; box-shadow: 0 0 0 5px #082009, 0 22px 80px #000a; overflow: hidden; transform: rotate(1.1deg); }
+    .term-head { display: flex; gap: 7px; align-items: center; height: 36px; padding: 0 14px; border-bottom: 1px solid #19421c; background: #0a140b; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #335739; }
+    .dot:first-child { background: var(--red); }
+    .term-head small { margin-left: auto; font: 600 .65rem var(--mono); color: #8aaa8c; }
+    .term-body { padding: 20px clamp(17px, 2vw, 30px) 26px; color: var(--green); font: 600 clamp(.75rem, 1.2vw, .91rem)/1.77 var(--mono); }
+    .term-title { color: var(--red); font-weight: 800; text-align: center; line-height: 1.45; margin-bottom: 16px; border-bottom: 1px solid var(--green); padding-bottom: 13px; }
+    .term-status { border-bottom: 1px dashed var(--green); margin-bottom: 12px; padding-bottom: 10px; }
+    .term-row { display: flex; gap: 18px; }
+    .term-row .num { width: 13px; flex: none; color: var(--red); }
+    .term-foot { border-top: 1px solid #19421c; margin-top: 15px; padding-top: 11px; font-size: .76rem; color: #a1d8a2; }
+    .section { padding: 88px 0; border-top: 1px solid var(--line); }
+    .section-top { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 36px; }
+    h2 { font-size: clamp(2rem, 4vw, 3.1rem); letter-spacing: -.045em; line-height: 1.08; margin: 12px 0 0; }
+    .section-top p { max-width: 420px; color: var(--muted); line-height: 1.6; margin: 0; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 15px; }
+    .card { background: linear-gradient(145deg, var(--panel-2), var(--panel)); border: 1px solid var(--line); border-radius: 13px; padding: 28px; min-height: 212px; }
+    .card .index { color: var(--red); font: 700 .8rem var(--mono); }
+    .card h3 { font-size: 1.3rem; letter-spacing: -.02em; margin: 30px 0 9px; }
+    .card p { color: var(--muted); line-height: 1.55; margin: 0; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; counter-reset: steps; }
+    .step { border-top: 1px solid var(--green); padding-top: 18px; }
+    .step::before { counter-increment: steps; content: "0" counter(steps); color: var(--red); font: 700 .9rem var(--mono); }
+    .step h3 { font-size: 1.14rem; margin: 16px 0 8px; }
+    .step p { color: var(--muted); line-height: 1.6; margin: 0; }
+    .step code { color: var(--green); font-family: var(--mono); overflow-wrap: anywhere; }
+    footer { border-top: 1px solid var(--line); padding: 30px 0 45px; }
+    .foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; color: var(--muted); font-size: .9rem; }
+    .foot strong { color: var(--green); font-family: var(--mono); }
+    .foot a:hover { color: var(--green); }
+    @media (max-width: 850px) {
+      .hero { grid-template-columns: 1fr; padding-top: 62px; }
+      .terminal { max-width: 550px; transform: none; }
+      .grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    }
+    @media (max-width: 620px) {
+      .wrap { width: min(100% - 30px, 1120px); }
+      .topbar { min-height: 67px; }
+      .brand { font-size: .78rem; }
+      nav a { font-size: .8rem; }
+      nav a:first-child { display: none; }
+      .hero { padding-top: 49px; }
+      .command { flex-direction: column; }
+      .command button { border-left: 0; border-top: 1px solid #3d7447; min-height: 43px; }
+      .section { padding: 64px 0; }
+      .section-top { display: block; }
+      .section-top p { margin-top: 16px; }
+      .grid, .steps { grid-template-columns: 1fr; }
+      .card { min-height: auto; }
+      .card h3 { margin-top: 17px; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap topbar">
+      <a class="brand" href="#inicio">ERROR404 <span>//</span> MEDIA CONSOLE</a>
+      <nav aria-label="Navegação principal">
+        <a href="#recursos">Recursos</a>
+        <a href="#como-usar">Como usar</a>
+        <a href="https://github.com/stack-Error404/yt-downloader-cli">GitHub ↗</a>
+      </nav>
+    </div>
+  </header>
+  <main id="inicio">
+    <section class="wrap hero" aria-labelledby="hero-title">
+      <div>
+        <div class="eyebrow">CachyOS / Arch Linux · v1.0.0</div>
+        <h1 id="hero-title">Seus downloads.<em>Seu terminal.</em></h1>
+        <p class="lead">Baixe vídeos e playlists em MP4 ou MP3 com um menu simples no terminal. Escolha a qualidade, acompanhe o download e abra a pasta de destino.</p>
+        <p class="install-label">Instale e abra com um comando</p>
+        <div class="command">
+          <code id="install-command">curl -fsSL https://raw.githubusercontent.com/stack-Error404/yt-downloader-cli/main/install.sh <b>|</b> bash</code>
+          <button id="copy-command" type="button" aria-label="Copiar comando de instalação">Copiar</button>
+        </div>
+        <p class="hint" id="copy-status" role="status" aria-live="polite">Requer yt-dlp e ffmpeg; o instalador verifica ambos.</p>
+        <div class="links">
+          <a class="btn btn-primary" href="#como-usar">Como funciona</a>
+          <a class="btn btn-secondary" href="https://github.com/stack-Error404/yt-downloader-cli">Ver código no GitHub ↗</a>
+        </div>
+      </div>
+      <div class="terminal" aria-label="Prévia do menu Error404 Media Console">
+        <div class="term-head"><span class="dot"></span><span class="dot"></span><span class="dot"></span><small>terminal — yt</small></div>
+        <div class="term-body">
+          <div class="term-title">ERROR404 // MEDIA CONSOLE<br>[ v1.0.0 ]</div>
+          <div class="term-status">status: online</div>
+          <div class="term-row"><span class="num">1</span><span>Vídeo MP4</span></div>
+          <div class="term-row"><span class="num">2</span><span>Áudio MP3</span></div>
+          <div class="term-row"><span class="num">3</span><span>Playlist MP4</span></div>
+          <div class="term-row"><span class="num">4</span><span>Playlist MP3</span></div>
+          <div class="term-row"><span class="num">5</span><span>Escolher qualidade</span></div>
+          <div class="term-row"><span class="num">6</span><span>Abrir pasta de downloads</span></div>
+          <div class="term-row"><span class="num">7</span><span>Atualizar yt-dlp e ffmpeg</span></div>
+          <div class="term-row"><span class="num">8</span><span>Sobre</span></div>
+          <div class="term-row"><span class="num">0</span><span>Sair</span></div>
+          <div class="term-foot">Downloads: ~/Downloads/YouTube</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="recursos" aria-labelledby="features-title">
+      <div class="wrap">
+        <div class="section-top"><div><div class="eyebrow">Recursos</div><h2 id="features-title">Tudo no menu.</h2></div><p>Abra com <code>yt</code>, cole o link e escolha o que deseja baixar.</p></div>
+        <div class="grid">
+          <article class="card"><span class="index">01 / VÍDEO</span><h3>MP4</h3><p>Baixe vídeos individuais ou playlists em subpastas organizadas.</p></article>
+          <article class="card"><span class="index">02 / ÁUDIO</span><h3>MP3</h3><p>Extraia o áudio de um vídeo ou de uma playlist inteira.</p></article>
+          <article class="card"><span class="index">03 / CONTROLE</span><h3>Escolha a qualidade</h3><p>Veja os formatos disponíveis e selecione vídeo e áudio manualmente.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="como-usar" aria-labelledby="how-title">
+      <div class="wrap">
+        <div class="section-top"><div><div class="eyebrow">Comece em minutos</div><h2 id="how-title">Instale. Abra. Baixe.</h2></div><p>Feito para CachyOS e Arch Linux. O instalador usa o <code>pacman</code> quando faltam dependências.</p></div>
+        <div class="steps">
+          <div class="step"><h3>Instale pelo terminal</h3><p>Copie o comando acima e execute no CachyOS. Você pode ler o <a href="https://github.com/stack-Error404/yt-downloader-cli/blob/main/install.sh">instalador</a> antes.</p></div>
+          <div class="step"><h3>Escolha uma opção</h3><p>O menu abre ao terminar a instalação. Depois, em um novo terminal, digite <code>yt</code>.</p></div>
+          <div class="step"><h3>Encontre seus arquivos</h3><p>Os downloads vão para <code>~/Downloads/YouTube</code>. Ao finalizar, você pode abrir a pasta ou voltar ao menu.</p></div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer>
+    <div class="wrap foot">
+      <span><strong>ERROR404 // MEDIA CONSOLE</strong> · Criado por Error404</span>
+      <span><a href="https://github.com/stack-Error404/yt-downloader-cli">Código e documentação</a> · Licença MIT</span>
+    </div>
+  </footer>
+  <script>
+    const command = "curl -fsSL https://raw.githubusercontent.com/stack-Error404/yt-downloader-cli/main/install.sh | bash";
+    const button = document.getElementById("copy-command");
+    const status = document.getElementById("copy-status");
+    button.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(command);
+        button.textContent = "Copiado!";
+        status.textContent = "Comando copiado. Cole no terminal do CachyOS.";
+        window.setTimeout(() => { button.textContent = "Copiar"; }, 2200);
+      } catch {
+        status.textContent = "Não foi possível copiar automaticamente. Selecione o comando acima e copie manualmente.";
+      }
+    });
+  </script>
+</body>
+</html>
