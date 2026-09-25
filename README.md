@@ -2,6 +2,8 @@
 
 Downloader em terminal para **CachyOS e Arch Linux**, criado por **Error404**.
 
+**Página oficial:** <https://stack-error404.github.io/yt-downloader-cli/>
+
 Baixe vídeos individuais ou playlists em MP4 e extraia áudio em MP3. O menu também permite escolher o formato manualmente, abrir a pasta de downloads e voltar ao menu após cada operação.
 
 ## Instalação rápida
