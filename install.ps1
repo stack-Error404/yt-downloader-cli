@@ -31,8 +31,11 @@ New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 $temporary = Join-Path $InstallDir ('.yt.' + [Guid]::NewGuid().ToString('N') + '.ps1')
 
 try {
-    $localSource = Join-Path $PSScriptRoot 'yt.ps1'
-    if ($PSScriptRoot -and (Test-Path -LiteralPath $localSource)) {
+    $localSource = $null
+    if ($PSScriptRoot) {
+        $localSource = Join-Path $PSScriptRoot 'yt.ps1'
+    }
+    if ($localSource -and (Test-Path -LiteralPath $localSource)) {
         Copy-Item -LiteralPath $localSource -Destination $temporary
         $checksumFile = Join-Path $PSScriptRoot 'checksums.sha256'
         if (Test-Path -LiteralPath $checksumFile) {

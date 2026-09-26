@@ -3,11 +3,36 @@ $ProjectDir = Split-Path -Parent $PSScriptRoot
 $ScriptPath = Join-Path $ProjectDir 'yt.ps1'
 $InstallPath = Join-Path $ProjectDir 'install.ps1'
 
+$tokens = $null
 $parseErrors = $null
-[void][System.Management.Automation.Language.Parser]::ParseFile($ScriptPath, [ref]$null, [ref]$parseErrors)
+[void][System.Management.Automation.Language.Parser]::ParseFile($ScriptPath, [ref]$tokens, [ref]$parseErrors)
 if ($parseErrors.Count) { throw "Erros de sintaxe em yt.ps1: $parseErrors" }
-[void][System.Management.Automation.Language.Parser]::ParseFile($InstallPath, [ref]$null, [ref]$parseErrors)
+$installAst = [System.Management.Automation.Language.Parser]::ParseFile($InstallPath, [ref]$tokens, [ref]$parseErrors)
 if ($parseErrors.Count) { throw "Erros de sintaxe em install.ps1: $parseErrors" }
+
+$rootJoins = $installAst.FindAll({
+    param($node)
+    $node -is [System.Management.Automation.Language.CommandAst] -and
+        $node.GetCommandName() -eq 'Join-Path' -and
+        $node.Extent.Text -match '\$PSScriptRoot'
+}, $true)
+foreach ($rootJoin in $rootJoins) {
+    $ancestor = $rootJoin.Parent
+    $isGuarded = $false
+    while ($ancestor) {
+        if ($ancestor -is [System.Management.Automation.Language.IfStatementAst]) {
+            $guard = $ancestor.Clauses | Where-Object { $_.Item1.Extent.Text -match '\$PSScriptRoot' } | Select-Object -First 1
+            if ($guard) {
+                $isGuarded = $true
+                break
+            }
+        }
+        $ancestor = $ancestor.Parent
+    }
+    if (-not $isGuarded) {
+        throw 'Join-Path não pode receber $PSScriptRoot antes de validar que ele existe (irm | iex).'
+    }
+}
 
 $PowerShell = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { 'powershell.exe' }
 
