@@ -21,7 +21,7 @@ foreach ($rootJoin in $rootJoins) {
     $isGuarded = $false
     while ($ancestor) {
         if ($ancestor -is [System.Management.Automation.Language.IfStatementAst]) {
-            $guard = $ancestor.Clauses | Where-Object { $_.Item1.Extent.Text -match '\$PSScriptRoot' } | Select-Object -First 1
+            $guard = $ancestor.Clauses | Where-Object { $_.Item1.Extent.Text -match '\$(PSScriptRoot|localSource)' } | Select-Object -First 1
             if ($guard) {
                 $isGuarded = $true
                 break
