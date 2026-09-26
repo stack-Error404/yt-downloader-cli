@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#050705">
-  <meta name="description" content="Error404 // Media Console: baixe vídeos e playlists em MP4 ou MP3 pelo terminal no CachyOS e Arch Linux.">
+  <meta name="description" content="Error404 // Media Console: YouTube e TikTok pelo terminal no Linux, Windows e Android/Termux.">
   <title>Error404 // Media Console</title>
   <style>
     :root {
@@ -45,6 +45,7 @@
     h1 em { display: block; color: var(--red); font-style: normal; }
     .lead { color: var(--muted); font-size: clamp(1.05rem, 1.8vw, 1.25rem); line-height: 1.62; max-width: 570px; margin: 0 0 32px; }
     .install-label { font: 700 .77rem var(--mono); color: var(--green); letter-spacing: .12em; text-transform: uppercase; margin: 0 0 10px; }
+    .install-option + .install-option { margin-top: 17px; }
     .command { display: flex; align-items: stretch; background: var(--panel); border: 1px solid #3d7447; border-radius: 12px; max-width: 630px; overflow: hidden; }
     .command code { padding: 17px 16px; display: block; overflow-x: auto; white-space: nowrap; scrollbar-width: thin; flex: 1; min-width: 0; font: 500 .88rem/1.55 var(--mono); color: #def7dc; }
     .command code b { color: var(--red); font-weight: 700; }
@@ -124,15 +125,24 @@
   <main id="inicio">
     <section class="wrap hero" aria-labelledby="hero-title">
       <div>
-        <div class="eyebrow">CachyOS / Arch Linux · v1.0.0</div>
+        <div class="eyebrow">Linux · Windows · Android/Termux · v1.1.0</div>
         <h1 id="hero-title">Seus downloads.<em>Seu terminal.</em></h1>
-        <p class="lead">Baixe vídeos e playlists em MP4 ou MP3 com um menu simples no terminal. Escolha a qualidade, acompanhe o download e abra a pasta de destino.</p>
-        <p class="install-label">Instale e abra com um comando</p>
-        <div class="command">
-          <code id="install-command">curl -fsSL https://raw.githubusercontent.com/stack-Error404/yt-downloader-cli/main/install.sh <b>|</b> bash</code>
-          <button id="copy-command" type="button" aria-label="Copiar comando de instalação">Copiar</button>
+        <p class="lead">Baixe YouTube e TikTok em MP4 ou MP3 com um menu simples e nativo para cada sistema. Escolha a qualidade, acompanhe o download e abra a pasta de destino.</p>
+        <div class="install-option">
+          <p class="install-label">Linux / Android Termux</p>
+          <div class="command">
+            <code>curl -fsSL https://raw.githubusercontent.com/stack-Error404/yt-downloader-cli/main/install.sh <b>|</b> bash</code>
+            <button class="copy-command" data-command="curl -fsSL https://raw.githubusercontent.com/stack-Error404/yt-downloader-cli/main/install.sh | bash" type="button" aria-label="Copiar instalação para Linux">Copiar</button>
+          </div>
         </div>
-        <p class="hint" id="copy-status" role="status" aria-live="polite">Requer yt-dlp e ffmpeg; o instalador verifica ambos.</p>
+        <div class="install-option">
+          <p class="install-label">Windows PowerShell</p>
+          <div class="command">
+            <code>irm https://raw.githubusercontent.com/stack-Error404/yt-downloader-cli/main/install.ps1 <b>|</b> iex</code>
+            <button class="copy-command" data-command="irm https://raw.githubusercontent.com/stack-Error404/yt-downloader-cli/main/install.ps1 | iex" type="button" aria-label="Copiar instalação para Windows">Copiar</button>
+          </div>
+        </div>
+        <p class="hint" id="copy-status" role="status" aria-live="polite">Requer yt-dlp e ffmpeg; os instaladores verificam a integridade e as dependências.</p>
         <div class="links">
           <a class="btn btn-primary" href="#como-usar">Como funciona</a>
           <a class="btn btn-secondary" href="https://github.com/stack-Error404/yt-downloader-cli">Ver código no GitHub ↗</a>
@@ -141,16 +151,17 @@
       <div class="terminal" aria-label="Prévia do menu Error404 Media Console">
         <div class="term-head"><span class="dot"></span><span class="dot"></span><span class="dot"></span><small>terminal — yt</small></div>
         <div class="term-body">
-          <div class="term-title">ERROR404 // MEDIA CONSOLE<br>[ v1.0.0 ]</div>
+          <div class="term-title">ERROR404 // MEDIA CONSOLE<br>[ v1.1.0 ]</div>
           <div class="term-status">status: online</div>
           <div class="term-row"><span class="num">1</span><span>Vídeo MP4</span></div>
           <div class="term-row"><span class="num">2</span><span>Áudio MP3</span></div>
           <div class="term-row"><span class="num">3</span><span>Playlist MP4</span></div>
           <div class="term-row"><span class="num">4</span><span>Playlist MP3</span></div>
           <div class="term-row"><span class="num">5</span><span>Escolher qualidade</span></div>
-          <div class="term-row"><span class="num">6</span><span>Abrir pasta de downloads</span></div>
-          <div class="term-row"><span class="num">7</span><span>Atualizar yt-dlp e ffmpeg</span></div>
-          <div class="term-row"><span class="num">8</span><span>Sobre</span></div>
+          <div class="term-row"><span class="num">6</span><span>TikTok</span></div>
+          <div class="term-row"><span class="num">7</span><span>Abrir pasta de downloads</span></div>
+          <div class="term-row"><span class="num">8</span><span>Atualizar dependências</span></div>
+          <div class="term-row"><span class="num">9</span><span>Sobre</span></div>
           <div class="term-row"><span class="num">0</span><span>Sair</span></div>
           <div class="term-foot">Downloads: ~/Downloads/YouTube</div>
         </div>
@@ -163,17 +174,20 @@
         <div class="grid">
           <article class="card"><span class="index">01 / VÍDEO</span><h3>MP4</h3><p>Baixe vídeos individuais ou playlists em subpastas organizadas.</p></article>
           <article class="card"><span class="index">02 / ÁUDIO</span><h3>MP3</h3><p>Extraia o áudio de um vídeo ou de uma playlist inteira.</p></article>
-          <article class="card"><span class="index">03 / CONTROLE</span><h3>Escolha a qualidade</h3><p>Veja os formatos disponíveis e selecione vídeo e áudio manualmente.</p></article>
+          <article class="card"><span class="index">03 / TIKTOK</span><h3>Vídeos individuais</h3><p>Cole links normais ou curtos e deixe o yt-dlp resolver o conteúdo disponível.</p></article>
+          <article class="card"><span class="index">04 / CONTROLE</span><h3>Escolha a qualidade</h3><p>Veja os formatos disponíveis e selecione vídeo e áudio manualmente.</p></article>
+          <article class="card"><span class="index">05 / WINDOWS</span><h3>PowerShell nativo</h3><p>Instalador e menu próprios, com dependências fornecidas pelo WinGet.</p></article>
+          <article class="card"><span class="index">06 / CELULAR</span><h3>Android com Termux</h3><p>Execute localmente no aparelho e salve na pasta compartilhada de downloads.</p></article>
         </div>
       </div>
     </section>
 
     <section class="section" id="como-usar" aria-labelledby="how-title">
       <div class="wrap">
-        <div class="section-top"><div><div class="eyebrow">Comece em minutos</div><h2 id="how-title">Instale. Abra. Baixe.</h2></div><p>Feito para CachyOS e Arch Linux. O instalador usa o <code>pacman</code> quando faltam dependências.</p></div>
+        <div class="section-top"><div><div class="eyebrow">Comece em minutos</div><h2 id="how-title">Instale. Abra. Baixe.</h2></div><p>Use Bash no Linux/Termux ou PowerShell no Windows. Cada instalador configura as dependências da sua plataforma.</p></div>
         <div class="steps">
-          <div class="step"><h3>Instale pelo terminal</h3><p>Copie o comando acima e execute no CachyOS. Você pode ler o <a href="https://github.com/stack-Error404/yt-downloader-cli/blob/main/install.sh">instalador</a> antes.</p></div>
-          <div class="step"><h3>Escolha uma opção</h3><p>O menu abre ao terminar a instalação. Depois, em um novo terminal, digite <code>yt</code>.</p></div>
+          <div class="step"><h3>Instale pelo terminal</h3><p>Copie o comando da sua plataforma. Você pode ler os <a href="https://github.com/stack-Error404/yt-downloader-cli">instaladores</a> antes de executar.</p></div>
+          <div class="step"><h3>Abra o menu</h3><p>Ao terminar, abra um novo terminal e digite <code>yt</code>. Use <code>yt --help</code> para ver as opções.</p></div>
           <div class="step"><h3>Encontre seus arquivos</h3><p>Os downloads vão para <code>~/Downloads/YouTube</code>. Ao finalizar, você pode abrir a pasta ou voltar ao menu.</p></div>
         </div>
       </div>
@@ -186,18 +200,18 @@
     </div>
   </footer>
   <script>
-    const command = "curl -fsSL https://raw.githubusercontent.com/stack-Error404/yt-downloader-cli/main/install.sh | bash";
-    const button = document.getElementById("copy-command");
     const status = document.getElementById("copy-status");
-    button.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(command);
-        button.textContent = "Copiado!";
-        status.textContent = "Comando copiado. Cole no terminal do CachyOS.";
-        window.setTimeout(() => { button.textContent = "Copiar"; }, 2200);
-      } catch {
-        status.textContent = "Não foi possível copiar automaticamente. Selecione o comando acima e copie manualmente.";
-      }
+    document.querySelectorAll(".copy-command").forEach((button) => {
+      button.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(button.dataset.command);
+          button.textContent = "Copiado!";
+          status.textContent = "Comando copiado. Cole no terminal da plataforma escolhida.";
+          window.setTimeout(() => { button.textContent = "Copiar"; }, 2200);
+        } catch {
+          status.textContent = "Não foi possível copiar automaticamente. Selecione o comando acima e copie manualmente.";
+        }
+      });
     });
   </script>
 </body>

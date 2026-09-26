@@ -1,19 +1,72 @@
 #!/usr/bin/env bash
-# YouTube Downloader CLI - Error404
+# Error404 // Media Console
 set -u
 
-VERSION="1.0.0"
+VERSION="1.1.0"
 AUTHOR="Error404"
 PROJECT_URL="https://github.com/stack-Error404/yt-downloader-cli"
-DOWNLOAD_DIR="${YT_DOWNLOAD_DIR:-$HOME/Downloads/YouTube}"
+
+if [[ -z "${HOME:-}" ]]; then
+    printf 'Erro: a variável HOME não está definida.\n' >&2
+    exit 1
+fi
+
+default_download_dir="$HOME/Downloads/YouTube"
+if [[ -n "${TERMUX_VERSION:-}" && -d "$HOME/storage/downloads" ]]; then
+    default_download_dir="$HOME/storage/downloads/Error404"
+fi
+DOWNLOAD_DIR="${YT_DOWNLOAD_DIR:-$default_download_dir}"
+
+usage() {
+    cat <<EOF
+Error404 // Media Console v$VERSION
+
+Uso: yt [opções]
+
+Opções:
+  -h, --help                 Mostra esta ajuda
+  -v, --version              Mostra a versão
+  -d, --download-dir PASTA   Usa outra pasta nesta execução
+
+Sem opções, abre o menu interativo.
+EOF
+}
+
+while (($#)); do
+    case "$1" in
+        -h|--help) usage; exit 0 ;;
+        -v|--version) printf 'yt %s\n' "$VERSION"; exit 0 ;;
+        -d|--download-dir)
+            if (($# < 2)) || [[ -z "$2" ]]; then
+                printf 'Erro: %s exige uma pasta.\n' "$1" >&2
+                exit 2
+            fi
+            DOWNLOAD_DIR=$2
+            shift 2
+            ;;
+        --download-dir=*)
+            DOWNLOAD_DIR=${1#*=}
+            [[ -n "$DOWNLOAD_DIR" ]] || { printf 'Erro: --download-dir exige uma pasta.\n' >&2; exit 2; }
+            shift
+            ;;
+        --) shift; break ;;
+        *) printf 'Erro: argumento desconhecido: %s\n' "$1" >&2; usage >&2; exit 2 ;;
+    esac
+done
+if (($#)); then
+    printf 'Erro: argumentos posicionais não são aceitos: %s\n' "$*" >&2
+    exit 2
+fi
+
+# O yt-dlp interpreta % em templates. Duplicá-lo preserva % literal na pasta.
+OUTPUT_DIR=${DOWNLOAD_DIR//%/%%}
 
 if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
-    # RGB real: verde neon, vermelho neon e fundo preto.
     CYAN=$'\033[38;2;57;255;20m'; GREEN=$'\033[38;2;57;255;20m'
-    RED=$'\033[38;2;255;36;70m'; YELLOW="$RED"
-    BG=$'\033[48;2;0;0;0m'; BOLD=$'\033[1m'; RESET=$'\033[39m'
+    RED=$'\033[38;2;255;36;70m'
+    BG=$'\033[48;2;0;0;0m'; BOLD=$'\033[1m'; RESET=$'\033[0m'
 else
-    CYAN=''; GREEN=''; RED=''; YELLOW=''; BG=''; BOLD=''; RESET=''
+    CYAN=''; GREEN=''; RED=''; BG=''; BOLD=''; RESET=''
 fi
 
 screen() { [[ -t 1 ]] && printf '%s\033[2J\033[H' "$BG" || :; }
@@ -27,7 +80,13 @@ check_dependencies() {
     command -v ffmpeg >/dev/null 2>&1 || missing+=(ffmpeg)
     if ((${#missing[@]})); then
         printf '%sDependências ausentes: %s%s\n' "$RED" "${missing[*]}" "$RESET" >&2
-        printf 'Instale com: sudo pacman -S --needed yt-dlp ffmpeg\n' >&2
+        if [[ -n "${TERMUX_VERSION:-}" ]]; then
+            printf 'Instale com: pkg install python-yt-dlp ffmpeg\n' >&2
+        elif command -v pacman >/dev/null 2>&1; then
+            printf 'Instale com: sudo pacman -S --needed yt-dlp ffmpeg\n' >&2
+        else
+            printf 'Instale yt-dlp e ffmpeg pelo gerenciador da sua distribuição.\n' >&2
+        fi
         exit 1
     fi
     if ! mkdir -p -- "$DOWNLOAD_DIR"; then
@@ -43,7 +102,9 @@ ask_url() {
 }
 
 open_folder() {
-    if command -v xdg-open >/dev/null 2>&1; then
+    if command -v termux-open >/dev/null 2>&1; then
+        termux-open "$DOWNLOAD_DIR" >/dev/null 2>&1 &
+    elif command -v xdg-open >/dev/null 2>&1; then
         xdg-open "$DOWNLOAD_DIR" >/dev/null 2>&1 &
     else
         printf 'Pasta: %s\n' "$DOWNLOAD_DIR"
@@ -73,21 +134,34 @@ download() {
     local mode=$1 playlist=$2 status=0
     local -a args=(--ignore-config --embed-metadata)
     screen
-    printf '%s%s%s | %s\n\n' "$CYAN" "$BOLD" "$mode" "$RESET"
+    printf '%s%s%s%s\n\n' "$CYAN" "$BOLD" "$mode" "$RESET"
     if ! ask_url; then pause; return; fi
     if [[ "$playlist" == yes ]]; then
-        args+=(--yes-playlist -o "$DOWNLOAD_DIR/%(playlist_title,playlist_id|Playlist)s/%(playlist_index|0)02d - %(title)s [%(id)s].%(ext)s")
+        args+=(--yes-playlist -o "$OUTPUT_DIR/%(playlist_title,playlist_id|Playlist)s/%(playlist_index|0)02d - %(title)s [%(id)s].%(ext)s")
     else
-        args+=(--no-playlist -o "$DOWNLOAD_DIR/%(title)s [%(id)s].%(ext)s")
+        args+=(--no-playlist -o "$OUTPUT_DIR/%(title)s [%(id)s].%(ext)s")
     fi
     if [[ "$mode" == MP3 ]]; then
         args+=(-x --audio-format mp3 --audio-quality 0 --embed-thumbnail)
     else
-        # Preferir faixas MP4/M4A; converter quando só houver outro codec.
-        args+=(-f 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b' --merge-output-format mp4 --recode-video mp4)
+        # Prefere MP4/M4A e apenas remuxa o contêiner, sem recodificar o vídeo.
+        args+=(-f 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b' --merge-output-format mp4 --remux-video mp4)
     fi
     printf '\nIniciando...\n\n'
     yt-dlp "${args[@]}" -- "$URL" || status=$?
+    after_download "$status"
+}
+
+download_tiktok() {
+    local status=0
+    screen
+    printf '%s%sTikTok (vídeo individual)%s\n\n' "$CYAN" "$BOLD" "$RESET"
+    if ! ask_url; then pause; return; fi
+    printf '\nIniciando...\n\n'
+    yt-dlp --ignore-config --no-playlist --embed-metadata \
+        -f 'bv*+ba/b' --merge-output-format mp4 --remux-video mp4 \
+        -o "$OUTPUT_DIR/TikTok/%(uploader,channel|TikTok)s - %(title)s [%(id)s].%(ext)s" \
+        -- "$URL" || status=$?
     after_download "$status"
 }
 
@@ -112,9 +186,8 @@ choose_quality() {
         printf 'Código de áudio inválido.\n'; pause; return
     fi
     if [[ -n "$audio" ]]; then selector="$video+$audio"; else selector="$video+bestaudio/$video"; fi
-    yt-dlp --ignore-config --no-playlist -f "$selector" --merge-output-format mp4 \
-        --recode-video mp4 --embed-metadata \
-        -o "$DOWNLOAD_DIR/%(title)s [%(id)s].%(ext)s" -- "$URL" || status=$?
+    yt-dlp --ignore-config --no-playlist -f "$selector" --merge-output-format mp4 --remux-video mp4 \
+        --embed-metadata -o "$OUTPUT_DIR/%(title)s [%(id)s].%(ext)s" -- "$URL" || status=$?
     after_download "$status"
 }
 
@@ -123,21 +196,22 @@ about() {
     printf '%s%s[ ERROR404 // MEDIA CONSOLE ]  v%s%s\n\n' "$CYAN" "$BOLD" "$VERSION" "$RESET"
     printf 'Criado por %s\n' "$AUTHOR"
     printf 'Projeto: %s\n' "$PROJECT_URL"
-    printf 'Vídeos e playlists em MP4 ou MP3 no CachyOS.\n'
+    printf 'YouTube e TikTok em MP4 ou MP3 no Linux, Android/Termux e Windows.\n'
     printf 'Downloads: %s\n' "$DOWNLOAD_DIR"
-    printf 'Dependências: yt-dlp e ffmpeg (atualizados pelo pacman).\n'
+    printf 'Dependências: yt-dlp e ffmpeg.\n'
     printf 'Use apenas conteúdo que você tem direito de baixar.\n'
     pause
 }
 
 update_dependencies() {
     screen
-    printf '%sAtualizar yt-dlp e ffmpeg pelo pacman%s\n\n' "$CYAN" "$RESET"
-    if ! command -v pacman >/dev/null 2>&1; then
-        printf 'Esta opção requer CachyOS/Arch Linux.\n'
+    printf '%sAtualizar somente yt-dlp e ffmpeg%s\n\n' "$CYAN" "$RESET"
+    if [[ -n "${TERMUX_VERSION:-}" ]] && command -v pkg >/dev/null 2>&1; then
+        pkg install -y python-yt-dlp ffmpeg
+    elif command -v pacman >/dev/null 2>&1; then
+        sudo pacman -S --needed yt-dlp ffmpeg
     else
-        sudo pacman -Syu --needed yt-dlp ffmpeg
-        printf 'Resultado do pacman: %s\n' "$?"
+        printf 'Atualização automática disponível apenas no Arch/CachyOS e Termux.\n'
     fi
     pause
 }
@@ -149,7 +223,7 @@ while true; do
     cat <<MENU
 ╔══════════════════════════════════════════╗
 ║         ${RED}ERROR404 // MEDIA CONSOLE${GREEN}        ║
-║             ${RED}[ v1.0.0 ]${GREEN}                   ║
+║             ${RED}[ v$VERSION ]${GREEN}                   ║
 ╠══════════════════════════════════════════╣
 ║  status: online                          ║
 ║  --------------------------------------  ║
@@ -158,9 +232,10 @@ while true; do
 ║  ${RED}3${GREEN}  Playlist MP4                         ║
 ║  ${RED}4${GREEN}  Playlist MP3                         ║
 ║  ${RED}5${GREEN}  Escolher qualidade                   ║
-║  ${RED}6${GREEN}  Abrir pasta de downloads             ║
-║  ${RED}7${GREEN}  Atualizar yt-dlp e ffmpeg            ║
-║  ${RED}8${GREEN}  Sobre                                ║
+║  ${RED}6${GREEN}  TikTok                               ║
+║  ${RED}7${GREEN}  Abrir pasta de downloads             ║
+║  ${RED}8${GREEN}  Atualizar yt-dlp e ffmpeg            ║
+║  ${RED}9${GREEN}  Sobre                                ║
 ║  ${RED}0${GREEN}  Sair                                 ║
 ╚══════════════════════════════════════════╝
 MENU
@@ -172,9 +247,10 @@ MENU
         3) download MP4 yes ;;
         4) download MP3 yes ;;
         5) choose_quality ;;
-        6) open_folder ;;
-        7) update_dependencies ;;
-        8) about ;;
+        6) download_tiktok ;;
+        7) open_folder ;;
+        8) update_dependencies ;;
+        9) about ;;
         0) exit 0 ;;
         *) printf 'Opção inválida.\n'; pause ;;
     esac
