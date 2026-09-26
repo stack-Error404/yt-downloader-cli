@@ -21,3 +21,4 @@ if ($LASTEXITCODE -ne 0 -or ($version -join '').Trim() -ne 'yt 1.1.0') { throw '
 if ($LASTEXITCODE -ne 2) { throw 'Argumento desconhecido deveria retornar 2' }
 
 Write-Host 'Todos os testes PowerShell passaram.' -ForegroundColor Green
+exit 0

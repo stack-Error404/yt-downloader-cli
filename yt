@@ -69,8 +69,12 @@ else
     CYAN=''; GREEN=''; RED=''; BG=''; BOLD=''; RESET=''
 fi
 
-screen() { [[ -t 1 ]] && printf '%s\033[2J\033[H' "$BG" || :; }
-restore_terminal() { [[ -t 1 && -z "${NO_COLOR:-}" ]] && printf '\033[0m' || :; }
+screen() {
+    if [[ -t 1 ]]; then printf '%s\033[2J\033[H' "$BG"; fi
+}
+restore_terminal() {
+    if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then printf '\033[0m'; fi
+}
 trap restore_terminal EXIT
 pause() { printf '\nPressione ENTER para voltar ao menu...'; IFS= read -r _ || exit 0; }
 
