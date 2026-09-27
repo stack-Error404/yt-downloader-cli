@@ -78,6 +78,13 @@ printf '1\nhttps://user:pass@www.youtube.com/watch?v=teste\n0\n' |
 grep -Fq -- 'YouTube — iniciando...' "$menu_output" || fail 'detecção com userinfo'
 pass 'detecção de host com userinfo'
 
+: > "$log"
+printf '10\n1\n\n0\n' |
+    PATH="$fake_bin:$PATH" YT_DLP_LOG="$log" NO_COLOR=1 \
+    "$project_dir/yt" --download-dir "$tmp_dir/cookies-menu" > "$menu_output"
+grep -Fq -- 'Cookies configurados para: firefox' "$menu_output" || fail 'configuração de cookies pelo menu'
+pass 'configuração de cookies pelo menu'
+
 printf 'invalida\n\n0\n' |
     PATH="$fake_bin:$PATH" YT_DLP_LOG="$log" NO_COLOR=1 \
     "$project_dir/yt" --download-dir "$tmp_dir/downloads" > "$menu_output"

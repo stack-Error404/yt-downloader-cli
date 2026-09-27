@@ -119,6 +119,7 @@ function Complete-Download([int]$Status) {
         Write-Host "`nDownload concluído. Arquivos em: $DownloadDir" -ForegroundColor Green
     } else {
         Write-Host "`nO download não foi concluído (código $Status)." -ForegroundColor Red
+        Write-Host 'Se o site exigir login ou o conteúdo for privado, escolha a opção 10 no menu para usar os cookies do navegador.' -ForegroundColor Cyan
     }
     while ($true) {
         $choice = Read-Host "`n[1] Abrir pasta  [2] Voltar ao menu  [0] Sair"
@@ -129,6 +130,27 @@ function Complete-Download([int]$Status) {
             default { Write-Host 'Opção inválida.' -ForegroundColor Red }
         }
     }
+}
+
+function Configure-BrowserCookies {
+    Clear-Menu
+    Write-Host 'Usar cookies do navegador' -ForegroundColor Green
+    Write-Host "`nUse esta opção se o site pedir login ou indicar que o conteúdo é privado."
+    Write-Host 'Feche o navegador escolhido antes de continuar.'
+    $choice = Read-Host "`n[1] Firefox  [2] Chrome  [3] Edge  [4] Brave  [0] Cancelar`nEscolha"
+    $browser = switch ($choice) {
+        '1' { 'firefox' }
+        '2' { 'chrome' }
+        '3' { 'edge' }
+        '4' { 'brave' }
+        '0' { return }
+        '' { return }
+        default { Write-Host 'Opção inválida.' -ForegroundColor Red; Pause-Menu; return }
+    }
+    $script:CookiesFromBrowser = $browser
+    Write-Host "`nCookies configurados para: $browser"
+    Write-Host 'Os próximos downloads desta sessão usarão essa conta.'
+    Pause-Menu
 }
 
 function Start-Download([string]$Mode, [bool]$Playlist) {
@@ -229,6 +251,7 @@ ERROR404 // MEDIA CONSOLE  [ v$Version ]
 7  Abrir pasta de downloads
 8  Atualizar yt-dlp e ffmpeg
 9  Sobre
+10 Usar cookies do navegador
 0  Sair
 "@ -ForegroundColor Green
     Write-Host "Downloads: $DownloadDir`n"
@@ -243,6 +266,7 @@ ERROR404 // MEDIA CONSOLE  [ v$Version ]
         '7' { Open-DownloadFolder }
         '8' { Update-Dependencies }
         '9' { Show-About }
+        '10' { Configure-BrowserCookies }
         '0' { exit 0 }
         default { Write-Host 'Opção inválida.' -ForegroundColor Red; Pause-Menu }
     }

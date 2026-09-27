@@ -106,6 +106,8 @@ Links de YouTube, TikTok, Instagram, Facebook e X/Twitter são identificados aut
 
 Para conteúdo que exige login, passe o navegador cujo perfil contém os cookies:
 
+Também é possível selecionar isso pelo menu, na opção **10 — Usar cookies do navegador**. Escolha Firefox, Chrome, Edge ou Brave; o programa explica quando essa opção é útil, por exemplo após um erro de login ou ao acessar conteúdo privado.
+
 ```bash
 yt --cookies-from-browser firefox
 yt --cookies-from-browser 'chrome:Default'

@@ -155,6 +155,7 @@ after_download() {
         printf '\n%s✓ Download concluído. Arquivos em: %s%s\n' "$GREEN" "$DOWNLOAD_DIR" "$RESET"
     else
         printf '\n%s✗ O download não foi concluído (código %s).%s\n' "$RED" "$status" "$RESET"
+        printf '%sSe o site exigir login ou o conteúdo for privado, escolha a opção 10 no menu para usar os cookies do navegador.%s\n' "$CYAN" "$RESET"
     fi
     while true; do
         printf '\n[1] Abrir pasta  [2] Voltar ao menu  [0] Sair\nEscolha: '
@@ -166,6 +167,29 @@ after_download() {
             *) printf 'Opção inválida.\n' ;;
         esac
     done
+}
+
+configure_browser_cookies() {
+    local choice browser
+    screen
+    printf '%s%sUsar cookies do navegador%s\n\n' "$CYAN" "$BOLD" "$RESET"
+    printf 'Use esta opção se o site pedir login ou indicar que o conteúdo é privado.\n'
+    printf 'Feche o navegador escolhido antes de continuar.\n\n'
+    printf '[1] Firefox  [2] Chrome  [3] Edge  [4] Brave  [0] Cancelar\nEscolha: '
+    IFS= read -r choice || return
+    case "$choice" in
+        1) browser=firefox ;;
+        2) browser=chrome ;;
+        3) browser=edge ;;
+        4) browser=brave ;;
+        0|'') return ;;
+        *) printf 'Opção inválida.\n'; pause; return ;;
+    esac
+    COOKIES_FROM_BROWSER=$browser
+    COOKIES_ARGS=(--cookies-from-browser "$browser")
+    printf '\nCookies configurados para: %s\n' "$browser"
+    printf 'Os próximos downloads desta sessão usarão essa conta.\n'
+    pause
 }
 
 download() {
@@ -276,6 +300,7 @@ while true; do
 ║  ${RED}7${GREEN}  Abrir pasta de downloads             ║
 ║  ${RED}8${GREEN}  Atualizar yt-dlp e ffmpeg            ║
 ║  ${RED}9${GREEN}  Sobre                                ║
+║  ${RED}10${GREEN} Usar cookies do navegador            ║
 ║  ${RED}0${GREEN}  Sair                                 ║
 ╚══════════════════════════════════════════╝
 MENU
@@ -291,6 +316,7 @@ MENU
         7) open_folder ;;
         8) update_dependencies ;;
         9) about ;;
+        10) configure_browser_cookies ;;
         0) exit 0 ;;
         *) printf 'Opção inválida.\n'; pause ;;
     esac
