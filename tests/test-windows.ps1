@@ -40,7 +40,7 @@ $help = & $PowerShell -NoLogo -NoProfile -File $ScriptPath --help
 if ($LASTEXITCODE -ne 0 -or ($help -join "`n") -notmatch 'Uso: yt') { throw 'Falha em --help' }
 
 $version = & $PowerShell -NoLogo -NoProfile -File $ScriptPath --version
-if ($LASTEXITCODE -ne 0 -or ($version -join '').Trim() -ne 'yt 1.1.0') { throw 'Falha em --version' }
+if ($LASTEXITCODE -ne 0 -or ($version -join '').Trim() -ne 'yt 1.1.1') { throw 'Falha em --version' }
 
 & $PowerShell -NoLogo -NoProfile -File $ScriptPath --nao-existe 2>$null
 if ($LASTEXITCODE -ne 2) { throw 'Argumento desconhecido deveria retornar 2' }

@@ -2,7 +2,7 @@
 # Instalador para Arch/CachyOS, outras distribuições Linux e Android/Termux.
 set -euo pipefail
 
-VERSION="1.1.0"
+VERSION="1.1.1"
 REPO_RAW="https://raw.githubusercontent.com/stack-Error404/yt-downloader-cli"
 REPO_REF="${YT_REPO_REF:-v$VERSION}"
 SCRIPT_PATH="${BASH_SOURCE[0]:-}"

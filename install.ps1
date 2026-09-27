@@ -1,10 +1,10 @@
 param(
-    [string]$RepoRef = 'v1.1.0',
+    [string]$RepoRef = 'v1.1.1',
     [string]$ExpectedSha256 = ''
 )
 
 $ErrorActionPreference = 'Stop'
-$Version = '1.1.0'
+$Version = '1.1.1'
 $RepoRaw = 'https://raw.githubusercontent.com/stack-Error404/yt-downloader-cli'
 $InstallDir = Join-Path $env:LOCALAPPDATA 'Programs\Error404MediaConsole'
 $Target = Join-Path $InstallDir 'yt.ps1'
