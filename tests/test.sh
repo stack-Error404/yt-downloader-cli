@@ -13,11 +13,11 @@ pass 'sintaxe Bash'
 
 help_output=$("$project_dir/yt" --help)
 [[ "$help_output" == *'Uso: yt [opções]'* ]] || fail '--help'
-[[ "$("$project_dir/yt" --version)" == 'yt 1.1.1' ]] || fail '--version'
+[[ "$("$project_dir/yt" --version)" == 'yt 1.1.2' ]] || fail '--version'
 if "$project_dir/yt" --nao-existe >/dev/null 2>&1; then fail 'argumento desconhecido'; fi
 if "$project_dir/yt" --download-dir --cookies-from-browser >/dev/null 2>&1; then fail 'valor de pasta interpretado como flag'; fi
 if "$project_dir/yt" --cookies-from-browser --download-dir >/dev/null 2>&1; then fail 'valor de navegador interpretado como flag'; fi
-[[ "$(bash "$project_dir/install.sh" --version)" == 'install.sh 1.1.1' ]] || fail 'versão do instalador'
+[[ "$(bash "$project_dir/install.sh" --version)" == 'install.sh 1.1.2' ]] || fail 'versão do instalador'
 bash "$project_dir/install.sh" --help | grep -Fq 'Uso: bash install.sh' || fail 'ajuda do instalador'
 if bash "$project_dir/install.sh" --nao-existe >/dev/null 2>&1; then fail 'argumento desconhecido do instalador'; fi
 pass 'argumentos do CLI'

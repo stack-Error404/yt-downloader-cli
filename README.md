@@ -86,7 +86,7 @@ cd yt-downloader-cli
 .\install.ps1
 ```
 
-Os instaladores baixam o programa da tag fixa `v1.1.1` e validam o SHA-256 contra `checksums.sha256`. Isso evita mudanças silenciosas do arquivo instalado e detecta corrupção; não substitui a confiança no repositório ou uma assinatura criptográfica da release.
+Os instaladores baixam o programa da tag fixa `v1.1.2` e validam o SHA-256 contra `checksums.sha256`. Isso evita mudanças silenciosas do arquivo instalado e detecta corrupção; não substitui a confiança no repositório ou uma assinatura criptográfica da release.
 
 ## Recursos
 

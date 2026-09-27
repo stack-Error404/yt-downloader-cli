@@ -1,10 +1,10 @@
-param(
+﻿param(
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$CliArgs
 )
 
 $ErrorActionPreference = 'Stop'
-$Version = '1.1.1'
+$Version = '1.1.2'
 $ProjectUrl = 'https://github.com/stack-Error404/yt-downloader-cli'
 $DownloadDir = if ($env:YT_DOWNLOAD_DIR) { $env:YT_DOWNLOAD_DIR } else { Join-Path (Join-Path $HOME 'Downloads') 'YouTube' }
 $CookiesFromBrowser = ''
