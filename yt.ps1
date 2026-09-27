@@ -4,7 +4,7 @@
 )
 
 $ErrorActionPreference = 'Stop'
-$Version = '1.1.2'
+$Version = '1.1.3'
 $ProjectUrl = 'https://github.com/stack-Error404/yt-downloader-cli'
 $DownloadDir = if ($env:YT_DOWNLOAD_DIR) { $env:YT_DOWNLOAD_DIR } else { Join-Path (Join-Path $HOME 'Downloads') 'YouTube' }
 $CookiesFromBrowser = ''

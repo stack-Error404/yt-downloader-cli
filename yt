@@ -2,7 +2,7 @@
 # Error404 // Media Console
 set -u
 
-VERSION="1.1.2"
+VERSION="1.1.3"
 AUTHOR="Error404"
 PROJECT_URL="https://github.com/stack-Error404/yt-downloader-cli"
 

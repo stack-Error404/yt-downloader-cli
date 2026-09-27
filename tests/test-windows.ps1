@@ -9,6 +9,11 @@ $parseErrors = $null
 if ($parseErrors.Count) { throw "Erros de sintaxe em yt.ps1: $parseErrors" }
 $installAst = [System.Management.Automation.Language.Parser]::ParseFile($InstallPath, [ref]$tokens, [ref]$parseErrors)
 if ($parseErrors.Count) { throw "Erros de sintaxe em install.ps1: $parseErrors" }
+if (-not $installAst.ParamBlock) { throw 'install.ps1 precisa começar com um único bloco param(...) para funcionar via irm | iex.' }
+$installBytes = [IO.File]::ReadAllBytes($InstallPath)
+if ($installBytes.Length -ge 3 -and $installBytes[0] -eq 0xef -and $installBytes[1] -eq 0xbb -and $installBytes[2] -eq 0xbf) {
+    throw 'install.ps1 não pode conter BOM UTF-8: irm | iex entrega o BOM como caractere do script.'
+}
 
 $rootJoins = $installAst.FindAll({
     param($node)
@@ -40,7 +45,7 @@ $help = & $PowerShell -NoLogo -NoProfile -File $ScriptPath --help
 if ($LASTEXITCODE -ne 0 -or ($help -join "`n") -notmatch 'Uso: yt') { throw 'Falha em --help' }
 
 $version = & $PowerShell -NoLogo -NoProfile -File $ScriptPath --version
-if ($LASTEXITCODE -ne 0 -or ($version -join '').Trim() -ne 'yt 1.1.2') { throw 'Falha em --version' }
+if ($LASTEXITCODE -ne 0 -or ($version -join '').Trim() -ne 'yt 1.1.3') { throw 'Falha em --version' }
 
 & $PowerShell -NoLogo -NoProfile -File $ScriptPath --nao-existe 2>$null
 if ($LASTEXITCODE -ne 2) { throw 'Argumento desconhecido deveria retornar 2' }
