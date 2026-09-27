@@ -4,7 +4,7 @@ Downloader interativo para **Linux, Windows e Android/Termux**, criado por **Err
 
 **Página oficial:** <https://stack-error404.github.io/yt-downloader-cli/>
 
-Baixe vídeos e playlists do YouTube em MP4 ou MP3, escolha formatos manualmente e salve vídeos individuais do TikTok. O projeto usa `yt-dlp` e `ffmpeg` como dependências.
+Baixe vídeos e playlists do YouTube em MP4 ou MP3, escolha formatos manualmente e salve vídeos individuais do TikTok, Instagram, Facebook e X/Twitter. O projeto usa `yt-dlp` e `ffmpeg` como dependências.
 
 ## Plataformas
 
@@ -102,7 +102,22 @@ Os instaladores baixam o programa da tag fixa `v1.1.0` e validam o SHA-256 contr
 | 8 | Atualizar somente `yt-dlp` e `ffmpeg` |
 | 9 | Ver informações do projeto |
 
-Links normais e links curtos do TikTok são entregues ao extrator do `yt-dlp`. O suporte pode variar quando o TikTok altera o site. Carrosséis, perfis completos, mídia privada e extração dedicada de áudio não fazem parte desta versão.
+Links de YouTube, TikTok, Instagram, Facebook e X/Twitter são identificados automaticamente para exibição no fluxo de download. A aceitação não depende de uma lista fixa: qualquer URL que o `yt-dlp` reconheça segue pelo caminho genérico, inclusive plataformas adicionadas futuramente ao `yt-dlp`. O suporte pode variar quando cada site altera sua estrutura.
+
+Para conteúdo que exige login, passe o navegador cujo perfil contém os cookies:
+
+```bash
+yt --cookies-from-browser firefox
+yt --cookies-from-browser 'chrome:Default'
+```
+
+No PowerShell, use a mesma opção:
+
+```powershell
+yt --cookies-from-browser firefox
+```
+
+Isso é especialmente útil para Instagram, Facebook e X. O `yt-dlp` acessa o perfil local do navegador; mantenha o navegador fechado quando ele exigir acesso ao banco de cookies. Conteúdo privado ainda depende das permissões da conta e das limitações do extrator.
 
 ## Opções de linha de comando
 
@@ -126,6 +141,8 @@ PowerShell:
 $env:YT_DOWNLOAD_DIR = "$HOME\Videos\YouTube"
 yt
 ```
+
+As opções `--cookies-from-browser BROWSER[:PROFILE]` e `--download-dir` podem ser combinadas.
 
 O programa rejeita argumentos desconhecidos em vez de ignorá-los silenciosamente.
 

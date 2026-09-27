@@ -27,6 +27,7 @@ Opções:
   -h, --help                 Mostra esta ajuda
   -v, --version              Mostra a versão
   -d, --download-dir PASTA   Usa outra pasta nesta execução
+  --cookies-from-browser B   Lê cookies do navegador B (ex.: firefox)
 
 Sem opções, abre o menu interativo.
 EOF
@@ -37,7 +38,7 @@ while (($#)); do
         -h|--help) usage; exit 0 ;;
         -v|--version) printf 'yt %s\n' "$VERSION"; exit 0 ;;
         -d|--download-dir)
-            if (($# < 2)) || [[ -z "$2" ]]; then
+            if (($# < 2)) || [[ -z "$2" || "$2" == -* ]]; then
                 printf 'Erro: %s exige uma pasta.\n' "$1" >&2
                 exit 2
             fi
@@ -46,7 +47,20 @@ while (($#)); do
             ;;
         --download-dir=*)
             DOWNLOAD_DIR=${1#*=}
-            [[ -n "$DOWNLOAD_DIR" ]] || { printf 'Erro: --download-dir exige uma pasta.\n' >&2; exit 2; }
+            [[ -n "$DOWNLOAD_DIR" && "$DOWNLOAD_DIR" != -* ]] || { printf 'Erro: --download-dir exige uma pasta válida.\n' >&2; exit 2; }
+            shift
+            ;;
+        --cookies-from-browser)
+            if (($# < 2)) || [[ -z "$2" || "$2" == -* ]]; then
+                printf 'Erro: --cookies-from-browser exige um navegador.\n' >&2
+                exit 2
+            fi
+            COOKIES_FROM_BROWSER=$2
+            shift 2
+            ;;
+        --cookies-from-browser=*)
+            COOKIES_FROM_BROWSER=${1#*=}
+            [[ -n "$COOKIES_FROM_BROWSER" && "$COOKIES_FROM_BROWSER" != -* ]] || { printf 'Erro: --cookies-from-browser exige um navegador válido.\n' >&2; exit 2; }
             shift
             ;;
         --) shift; break ;;
@@ -60,6 +74,10 @@ fi
 
 # O yt-dlp interpreta % em templates. Duplicá-lo preserva % literal na pasta.
 OUTPUT_DIR=${DOWNLOAD_DIR//%/%%}
+COOKIES_ARGS=()
+if [[ -n "${COOKIES_FROM_BROWSER:-}" ]]; then
+    COOKIES_ARGS=(--cookies-from-browser "$COOKIES_FROM_BROWSER")
+fi
 
 if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
     CYAN=$'\033[38;2;57;255;20m'; GREEN=$'\033[38;2;57;255;20m'
@@ -105,6 +123,22 @@ ask_url() {
     [[ -n "${URL//[[:space:]]/}" ]] || { printf 'Link vazio.\n'; return 1; }
 }
 
+detect_platform() {
+    local url=${1,,} host
+    host=${url#*://}
+    host=${host%%/*}
+    host=${host##*@}
+    host=${host%%:*}
+    case "$host" in
+        youtube.com|www.youtube.com|m.youtube.com|youtu.be) printf 'YouTube' ;;
+        tiktok.com|www.tiktok.com|vm.tiktok.com) printf 'TikTok' ;;
+        instagram.com|www.instagram.com) printf 'Instagram' ;;
+        facebook.com|www.facebook.com|m.facebook.com|fb.watch|www.facebook.watch) printf 'Facebook' ;;
+        twitter.com|www.twitter.com|x.com|www.x.com) printf 'X/Twitter' ;;
+        *) printf 'yt-dlp (detecção automática)' ;;
+    esac
+}
+
 open_folder() {
     if command -v termux-open >/dev/null 2>&1; then
         termux-open "$DOWNLOAD_DIR" >/dev/null 2>&1 &
@@ -140,6 +174,8 @@ download() {
     screen
     printf '%s%s%s%s\n\n' "$CYAN" "$BOLD" "$mode" "$RESET"
     if ! ask_url; then pause; return; fi
+    local platform
+    platform=$(detect_platform "$URL")
     if [[ "$playlist" == yes ]]; then
         args+=(--yes-playlist -o "$OUTPUT_DIR/%(playlist_title,playlist_id|Playlist)s/%(playlist_index|0)02d - %(title)s [%(id)s].%(ext)s")
     else
@@ -151,8 +187,8 @@ download() {
         # Prefere MP4/M4A e apenas remuxa o contêiner, sem recodificar o vídeo.
         args+=(-f 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b' --merge-output-format mp4 --remux-video mp4)
     fi
-    printf '\nIniciando...\n\n'
-    yt-dlp "${args[@]}" -- "$URL" || status=$?
+    printf '\n%s — iniciando...\n\n' "$platform"
+    yt-dlp "${COOKIES_ARGS[@]}" "${args[@]}" -- "$URL" || status=$?
     after_download "$status"
 }
 
@@ -162,7 +198,7 @@ download_tiktok() {
     printf '%s%sTikTok (vídeo individual)%s\n\n' "$CYAN" "$BOLD" "$RESET"
     if ! ask_url; then pause; return; fi
     printf '\nIniciando...\n\n'
-    yt-dlp --ignore-config --no-playlist --embed-metadata \
+    yt-dlp "${COOKIES_ARGS[@]}" --ignore-config --no-playlist --embed-metadata \
         -f 'bv*+ba/b' --merge-output-format mp4 --remux-video mp4 \
         -o "$OUTPUT_DIR/TikTok/%(uploader,channel|TikTok)s - %(title)s [%(id)s].%(ext)s" \
         -- "$URL" || status=$?
@@ -175,7 +211,7 @@ choose_quality() {
     printf '%s%sEscolher qualidade (vídeo individual MP4)%s\n\n' "$CYAN" "$BOLD" "$RESET"
     if ! ask_url; then pause; return; fi
     printf '\nBuscando formatos disponíveis...\n\n'
-    if ! yt-dlp --ignore-config --no-playlist -F -- "$URL"; then
+    if ! yt-dlp "${COOKIES_ARGS[@]}" --ignore-config --no-playlist -F -- "$URL"; then
         printf '%sFalha ao buscar formatos.%s\n' "$RED" "$RESET"
         pause; return
     fi
@@ -190,7 +226,7 @@ choose_quality() {
         printf 'Código de áudio inválido.\n'; pause; return
     fi
     if [[ -n "$audio" ]]; then selector="$video+$audio"; else selector="$video+bestaudio/$video"; fi
-    yt-dlp --ignore-config --no-playlist -f "$selector" --merge-output-format mp4 --remux-video mp4 \
+    yt-dlp "${COOKIES_ARGS[@]}" --ignore-config --no-playlist -f "$selector" --merge-output-format mp4 --remux-video mp4 \
         --embed-metadata -o "$OUTPUT_DIR/%(title)s [%(id)s].%(ext)s" -- "$URL" || status=$?
     after_download "$status"
 }
@@ -200,7 +236,7 @@ about() {
     printf '%s%s[ ERROR404 // MEDIA CONSOLE ]  v%s%s\n\n' "$CYAN" "$BOLD" "$VERSION" "$RESET"
     printf 'Criado por %s\n' "$AUTHOR"
     printf 'Projeto: %s\n' "$PROJECT_URL"
-    printf 'YouTube e TikTok em MP4 ou MP3 no Linux, Android/Termux e Windows.\n'
+    printf 'YouTube, TikTok e outras plataformas reconhecidas pelo yt-dlp.\n'
     printf 'Downloads: %s\n' "$DOWNLOAD_DIR"
     printf 'Dependências: yt-dlp e ffmpeg.\n'
     printf 'Use apenas conteúdo que você tem direito de baixar.\n'

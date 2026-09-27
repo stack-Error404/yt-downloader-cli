@@ -6,7 +6,8 @@ param(
 $ErrorActionPreference = 'Stop'
 $Version = '1.1.0'
 $ProjectUrl = 'https://github.com/stack-Error404/yt-downloader-cli'
-$DownloadDir = if ($env:YT_DOWNLOAD_DIR) { $env:YT_DOWNLOAD_DIR } else { Join-Path $HOME 'Downloads\YouTube' }
+$DownloadDir = if ($env:YT_DOWNLOAD_DIR) { $env:YT_DOWNLOAD_DIR } else { Join-Path (Join-Path $HOME 'Downloads') 'YouTube' }
+$CookiesFromBrowser = ''
 
 function Show-Usage {
     @"
@@ -18,6 +19,7 @@ Opções:
   -h, --help                 Mostra esta ajuda
   -v, --version              Mostra a versão
   -d, --download-dir PASTA   Usa outra pasta nesta execução
+  --cookies-from-browser B   Lê cookies do navegador B (ex.: firefox)
 
 Sem opções, abre o menu interativo.
 "@
@@ -28,7 +30,7 @@ for ($i = 0; $i -lt $CliArgs.Count; $i++) {
         { $_ -in '-h', '--help' } { Show-Usage; exit 0 }
         { $_ -in '-v', '--version' } { "yt $Version"; exit 0 }
         { $_ -in '-d', '--download-dir' } {
-            if ($i + 1 -ge $CliArgs.Count -or [string]::IsNullOrWhiteSpace($CliArgs[$i + 1])) {
+            if ($i + 1 -ge $CliArgs.Count -or [string]::IsNullOrWhiteSpace($CliArgs[$i + 1]) -or $CliArgs[$i + 1].StartsWith('-')) {
                 [Console]::Error.WriteLine("Erro: $($CliArgs[$i]) exige uma pasta.")
                 exit 2
             }
@@ -37,8 +39,23 @@ for ($i = 0; $i -lt $CliArgs.Count; $i++) {
         }
         { $_ -like '--download-dir=*' } {
             $DownloadDir = $_.Substring('--download-dir='.Length)
-            if ([string]::IsNullOrWhiteSpace($DownloadDir)) {
-                [Console]::Error.WriteLine('Erro: --download-dir exige uma pasta.')
+            if ([string]::IsNullOrWhiteSpace($DownloadDir) -or $DownloadDir.StartsWith('-')) {
+                [Console]::Error.WriteLine('Erro: --download-dir exige uma pasta válida.')
+                exit 2
+            }
+        }
+        '--cookies-from-browser' {
+            if ($i + 1 -ge $CliArgs.Count -or [string]::IsNullOrWhiteSpace($CliArgs[$i + 1]) -or $CliArgs[$i + 1].StartsWith('-')) {
+                [Console]::Error.WriteLine('Erro: --cookies-from-browser exige um navegador.')
+                exit 2
+            }
+            $i++
+            $CookiesFromBrowser = $CliArgs[$i]
+        }
+        { $_ -like '--cookies-from-browser=*' } {
+            $CookiesFromBrowser = $_.Substring('--cookies-from-browser='.Length)
+            if ([string]::IsNullOrWhiteSpace($CookiesFromBrowser) -or $CookiesFromBrowser.StartsWith('-')) {
+                [Console]::Error.WriteLine('Erro: --cookies-from-browser exige um navegador válido.')
                 exit 2
             }
         }
@@ -76,6 +93,19 @@ function Read-Url {
     return $true
 }
 
+function Get-PlatformLabel([string]$Url) {
+    if ($Url -notmatch '^[a-z][a-z0-9+.-]*://') { $Url = "https://$Url" }
+    try { $urlHost = ([Uri]$Url).Host.ToLowerInvariant() } catch { return 'yt-dlp (detecção automática)' }
+    switch ($urlHost) {
+        { $_ -in 'youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be' } { return 'YouTube' }
+        { $_ -in 'tiktok.com', 'www.tiktok.com', 'vm.tiktok.com' } { return 'TikTok' }
+        { $_ -in 'instagram.com', 'www.instagram.com' } { return 'Instagram' }
+        { $_ -in 'facebook.com', 'www.facebook.com', 'm.facebook.com', 'fb.watch', 'www.facebook.watch' } { return 'Facebook' }
+        { $_ -in 'twitter.com', 'www.twitter.com', 'x.com', 'www.x.com' } { return 'X/Twitter' }
+    }
+    return 'yt-dlp (detecção automática)'
+}
+
 function Pause-Menu {
     [void](Read-Host 'Pressione ENTER para voltar ao menu')
 }
@@ -105,6 +135,7 @@ function Start-Download([string]$Mode, [bool]$Playlist) {
     Clear-Menu
     Write-Host $Mode -ForegroundColor Green
     if (-not (Read-Url)) { Pause-Menu; return }
+    $platform = Get-PlatformLabel $script:Url
     $arguments = @('--ignore-config', '--embed-metadata')
     if ($Playlist) {
         $arguments += @('--yes-playlist', '-o', "$OutputDir/%(playlist_title,playlist_id|Playlist)s/%(playlist_index|0)02d - %(title)s [%(id)s].%(ext)s")
@@ -116,6 +147,8 @@ function Start-Download([string]$Mode, [bool]$Playlist) {
     } else {
         $arguments += @('-f', 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b', '--merge-output-format', 'mp4', '--remux-video', 'mp4')
     }
+    if ($CookiesFromBrowser) { $arguments += @('--cookies-from-browser', $CookiesFromBrowser) }
+    Write-Host "`n$platform — iniciando...`n"
     & yt-dlp @arguments '--' $script:Url
     Complete-Download $LASTEXITCODE
 }
@@ -129,6 +162,7 @@ function Start-TikTokDownload {
         '-f', 'bv*+ba/b', '--merge-output-format', 'mp4', '--remux-video', 'mp4',
         '-o', "$OutputDir/TikTok/%(uploader,channel|TikTok)s - %(title)s [%(id)s].%(ext)s"
     )
+    if ($CookiesFromBrowser) { $arguments += @('--cookies-from-browser', $CookiesFromBrowser) }
     & yt-dlp @arguments '--' $script:Url
     Complete-Download $LASTEXITCODE
 }
@@ -137,7 +171,10 @@ function Select-Quality {
     Clear-Menu
     Write-Host 'Escolher qualidade (vídeo individual MP4)' -ForegroundColor Green
     if (-not (Read-Url)) { Pause-Menu; return }
-    & yt-dlp '--ignore-config' '--no-playlist' '-F' '--' $script:Url
+    $formatArguments = @('--ignore-config', '--no-playlist')
+    if ($CookiesFromBrowser) { $formatArguments += @('--cookies-from-browser', $CookiesFromBrowser) }
+    $formatArguments += @('-F', '--', $script:Url)
+    & yt-dlp @formatArguments
     if ($LASTEXITCODE -ne 0) { Write-Host 'Falha ao buscar formatos.' -ForegroundColor Red; Pause-Menu; return }
     $video = Read-Host 'Código do formato de vídeo'
     if ($video -notmatch '^[A-Za-z0-9_.-]+$') { Write-Host 'Código de vídeo inválido.' -ForegroundColor Red; Pause-Menu; return }
@@ -149,6 +186,7 @@ function Select-Quality {
         '--merge-output-format', 'mp4', '--remux-video', 'mp4', '--embed-metadata',
         '-o', "$OutputDir/%(title)s [%(id)s].%(ext)s"
     )
+    if ($CookiesFromBrowser) { $arguments += @('--cookies-from-browser', $CookiesFromBrowser) }
     & yt-dlp @arguments '--' $script:Url
     Complete-Download $LASTEXITCODE
 }
@@ -170,7 +208,7 @@ function Show-About {
     Write-Host "ERROR404 // MEDIA CONSOLE v$Version" -ForegroundColor Green
     Write-Host "`nCriado por Error404"
     Write-Host "Projeto: $ProjectUrl"
-    Write-Host 'YouTube e TikTok em MP4 ou MP3 no Linux, Android/Termux e Windows.'
+    Write-Host 'YouTube, TikTok e outras plataformas reconhecidas pelo yt-dlp.'
     Write-Host "Downloads: $DownloadDir"
     Write-Host 'Use apenas conteúdo que você tem direito de baixar.'
     Pause-Menu

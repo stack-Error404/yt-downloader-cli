@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#050705">
-  <meta name="description" content="Error404 // Media Console: YouTube e TikTok pelo terminal no Linux, Windows e Android/Termux.">
+  <meta name="description" content="Error404 // Media Console: downloader local para YouTube, TikTok, Instagram, Facebook, X/Twitter e outras plataformas suportadas pelo yt-dlp.">
   <title>Error404 // Media Console</title>
   <style>
     :root {
@@ -127,7 +127,7 @@
       <div>
         <div class="eyebrow">Linux · Windows · Android/Termux · v1.1.0</div>
         <h1 id="hero-title">Seus downloads.<em>Seu terminal.</em></h1>
-        <p class="lead">Baixe YouTube e TikTok em MP4 ou MP3 com um menu simples e nativo para cada sistema. Escolha a qualidade, acompanhe o download e abra a pasta de destino.</p>
+        <p class="lead">Baixe YouTube, TikTok, Instagram, Facebook e X/Twitter em MP4 ou MP3 com um menu simples e nativo para cada sistema. A plataforma é detectada automaticamente e qualquer link reconhecido pelo yt-dlp segue pelo caminho genérico.</p>
         <div class="install-option">
           <p class="install-label">Linux / Android Termux</p>
           <div class="command">
@@ -174,10 +174,10 @@
         <div class="grid">
           <article class="card"><span class="index">01 / VÍDEO</span><h3>MP4</h3><p>Baixe vídeos individuais ou playlists em subpastas organizadas.</p></article>
           <article class="card"><span class="index">02 / ÁUDIO</span><h3>MP3</h3><p>Extraia o áudio de um vídeo ou de uma playlist inteira.</p></article>
-          <article class="card"><span class="index">03 / TIKTOK</span><h3>Vídeos individuais</h3><p>Cole links normais ou curtos e deixe o yt-dlp resolver o conteúdo disponível.</p></article>
-          <article class="card"><span class="index">04 / CONTROLE</span><h3>Escolha a qualidade</h3><p>Veja os formatos disponíveis e selecione vídeo e áudio manualmente.</p></article>
-          <article class="card"><span class="index">05 / WINDOWS</span><h3>PowerShell nativo</h3><p>Instalador e menu próprios, com dependências fornecidas pelo WinGet.</p></article>
-          <article class="card"><span class="index">06 / CELULAR</span><h3>Android com Termux</h3><p>Execute localmente no aparelho e salve na pasta compartilhada de downloads.</p></article>
+          <article class="card"><span class="index">03 / PLATAFORMAS</span><h3>Detecção automática</h3><p>YouTube, TikTok, Instagram, Facebook e X/Twitter recebem identificação automática. Links de outras plataformas aceitos pelo yt-dlp também funcionam.</p></article>
+          <article class="card"><span class="index">04 / CONTROLE</span><h3>Escolha a qualidade</h3><p>Veja os formatos disponíveis e selecione vídeo e áudio manualmente quando precisar.</p></article>
+          <article class="card"><span class="index">05 / LOGIN</span><h3>Cookies do navegador</h3><p>Use <code>yt --cookies-from-browser firefox</code> para acessar conteúdo que exige login, especialmente em Instagram, Facebook e X.</p></article>
+          <article class="card"><span class="index">06 / MULTIPLATAFORMA</span><h3>Roda localmente</h3><p>Instaladores nativos para Linux, Windows e Android com Termux, usando yt-dlp e ffmpeg.</p></article>
         </div>
       </div>
     </section>
@@ -187,7 +187,7 @@
         <div class="section-top"><div><div class="eyebrow">Comece em minutos</div><h2 id="how-title">Instale. Abra. Baixe.</h2></div><p>Use Bash no Linux/Termux ou PowerShell no Windows. Cada instalador configura as dependências da sua plataforma.</p></div>
         <div class="steps">
           <div class="step"><h3>Instale pelo terminal</h3><p>Copie o comando da sua plataforma. Você pode ler os <a href="https://github.com/stack-Error404/yt-downloader-cli">instaladores</a> antes de executar.</p></div>
-          <div class="step"><h3>Abra o menu</h3><p>Ao terminar, abra um novo terminal e digite <code>yt</code>. Use <code>yt --help</code> para ver as opções.</p></div>
+          <div class="step"><h3>Abra o menu</h3><p>Ao terminar, abra um novo terminal e digite <code>yt</code>. Cole um link; a plataforma será detectada sem escolha manual.</p></div>
           <div class="step"><h3>Encontre seus arquivos</h3><p>Os downloads vão para <code>~/Downloads/YouTube</code>. Ao finalizar, você pode abrir a pasta ou voltar ao menu.</p></div>
         </div>
       </div>

@@ -15,6 +15,8 @@ help_output=$("$project_dir/yt" --help)
 [[ "$help_output" == *'Uso: yt [opções]'* ]] || fail '--help'
 [[ "$("$project_dir/yt" --version)" == 'yt 1.1.0' ]] || fail '--version'
 if "$project_dir/yt" --nao-existe >/dev/null 2>&1; then fail 'argumento desconhecido'; fi
+if "$project_dir/yt" --download-dir --cookies-from-browser >/dev/null 2>&1; then fail 'valor de pasta interpretado como flag'; fi
+if "$project_dir/yt" --cookies-from-browser --download-dir >/dev/null 2>&1; then fail 'valor de navegador interpretado como flag'; fi
 [[ "$(bash "$project_dir/install.sh" --version)" == 'install.sh 1.1.0' ]] || fail 'versão do instalador'
 bash "$project_dir/install.sh" --help | grep -Fq 'Uso: bash install.sh' || fail 'ajuda do instalador'
 if bash "$project_dir/install.sh" --nao-existe >/dev/null 2>&1; then fail 'argumento desconhecido do instalador'; fi
@@ -51,6 +53,30 @@ printf '1\nhttps://www.youtube.com/watch?v=teste\n0\n' |
 grep -Fxq -- '--remux-video' "$log" || fail 'MP4 sem remux'
 if grep -Fxq -- '--recode-video' "$log"; then fail 'MP4 ainda recodifica'; fi
 pass 'fluxo MP4 sem recodificação'
+
+: > "$log"
+printf '1\nhttps://www.instagram.com/reel/teste\n0\n' |
+    PATH="$fake_bin:$PATH" YT_DLP_LOG="$log" NO_COLOR=1 \
+    "$project_dir/yt" --cookies-from-browser firefox --download-dir "$tmp_dir/instagram" > "$menu_output"
+grep -Fxq -- '--cookies-from-browser' "$log" || fail 'cookies não repassados'
+grep -Fxq -- 'firefox' "$log" || fail 'navegador dos cookies não repassado'
+grep -Fxq -- 'https://www.instagram.com/reel/teste' "$log" || fail 'URL do Instagram'
+grep -Fq -- 'Instagram — iniciando...' "$menu_output" || fail 'detecção de Instagram'
+pass 'fallback genérico, detecção de plataforma e cookies'
+
+: > "$log"
+printf '1\nhttps://www.netflix.com/watch/123\n0\n' |
+    PATH="$fake_bin:$PATH" YT_DLP_LOG="$log" NO_COLOR=1 \
+    "$project_dir/yt" --download-dir "$tmp_dir/generic" > "$menu_output"
+grep -Fq -- 'yt-dlp (detecção automática) — iniciando...' "$menu_output" || fail 'falso positivo na detecção'
+pass 'detecção sem falso positivo de domínio'
+
+: > "$log"
+printf '1\nhttps://user:pass@www.youtube.com/watch?v=teste\n0\n' |
+    PATH="$fake_bin:$PATH" YT_DLP_LOG="$log" NO_COLOR=1 \
+    "$project_dir/yt" --download-dir "$tmp_dir/userinfo" > "$menu_output"
+grep -Fq -- 'YouTube — iniciando...' "$menu_output" || fail 'detecção com userinfo'
+pass 'detecção de host com userinfo'
 
 printf 'invalida\n\n0\n' |
     PATH="$fake_bin:$PATH" YT_DLP_LOG="$log" NO_COLOR=1 \
