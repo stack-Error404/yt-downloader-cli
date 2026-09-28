@@ -41,6 +41,8 @@ else
     INSTALL_DIR="$HOME/.local/bin"
 fi
 TARGET="$INSTALL_DIR/yt"
+ASSET_DIR="$HOME/.local/share/error404-media-console"
+ASSET_TARGET="$ASSET_DIR/error404-terminal.png"
 
 install_dependencies() {
     if command -v yt-dlp >/dev/null 2>&1 && command -v ffmpeg >/dev/null 2>&1; then
@@ -75,7 +77,8 @@ install_dependencies
 mkdir -p -- "$INSTALL_DIR"
 tmp=$(mktemp "$INSTALL_DIR/.yt.XXXXXXXX")
 checksum_tmp=$(mktemp "$INSTALL_DIR/.yt-checksums.XXXXXXXX")
-trap 'rm -f -- "$tmp" "$checksum_tmp"' EXIT
+asset_tmp=$(mktemp "$INSTALL_DIR/.yt-asset.XXXXXXXX")
+trap 'rm -f -- "$tmp" "$checksum_tmp" "$asset_tmp"' EXIT
 
 script_dir=''
 if [[ -n "$SCRIPT_PATH" && -f "$SCRIPT_PATH" ]]; then
@@ -87,6 +90,11 @@ if [[ -n "$script_dir" && -f "$script_dir/yt" ]]; then
     if [[ -f "$script_dir/checksums.sha256" ]]; then
         expected=$(awk '$2 == "yt" { print $1; exit }' "$script_dir/checksums.sha256")
         [[ -n "$expected" ]] && verify_sha256 "$tmp" "$expected"
+    fi
+    if [[ -f "$script_dir/docs/assets/error404-terminal.png" ]]; then
+        cp -- "$script_dir/docs/assets/error404-terminal.png" "$asset_tmp"
+    else
+        rm -f -- "$asset_tmp"
     fi
 else
     command -v curl >/dev/null 2>&1 || { printf 'Instale curl para usar a instalação remota.\n' >&2; exit 1; }
@@ -100,13 +108,20 @@ else
     fi
     [[ -n "${expected:-}" ]] || { printf 'Checksum de yt não encontrado.\n' >&2; exit 1; }
     verify_sha256 "$tmp" "$expected"
+    if ! curl -fL --retry 2 --proto '=https' --tlsv1.2 "$base_url/docs/assets/error404-terminal.png" -o "$asset_tmp"; then
+        rm -f -- "$asset_tmp"
+    fi
 fi
 
 bash -n "$tmp"
 chmod 755 "$tmp"
 mv -f -- "$tmp" "$TARGET"
+if [[ -f "$asset_tmp" ]]; then
+    mkdir -p -- "$ASSET_DIR"
+    mv -f -- "$asset_tmp" "$ASSET_TARGET"
+fi
 trap - EXIT
-rm -f -- "$checksum_tmp"
+rm -f -- "$checksum_tmp" "$asset_tmp"
 
 path_line="export PATH=\"\$HOME/.local/bin:\$PATH\""
 if [[ "$INSTALL_DIR" == "$HOME/.local/bin" ]]; then

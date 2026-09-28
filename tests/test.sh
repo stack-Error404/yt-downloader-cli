@@ -98,6 +98,7 @@ for run in 1 2; do
         bash "$project_dir/install.sh" </dev/null > "$tmp_dir/install-$run.out"
 done
 cmp -s "$project_dir/yt" "$test_home/.local/bin/yt" || fail 'arquivo instalado'
+[[ -f "$test_home/.local/share/error404-media-console/error404-terminal.png" ]] || fail 'banner instalado'
 path_line="export PATH=\"\$HOME/.local/bin:\$PATH\""
 [[ $(grep -Fc "$path_line" "$test_home/.bashrc") -eq 1 ]] || fail 'PATH idempotente'
 if grep -Fq 'Escolha:' "$tmp_dir/install-1.out"; then fail 'instalador abriu o menu'; fi

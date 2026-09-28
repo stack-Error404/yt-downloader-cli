@@ -5,6 +5,15 @@ set -u
 VERSION="1.1.3"
 AUTHOR="Error404"
 PROJECT_URL="https://github.com/stack-Error404/yt-downloader-cli"
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+ERROR404_IMAGE="${YT_ERROR404_IMAGE:-}"
+if [[ -z "$ERROR404_IMAGE" ]]; then
+    if [[ -f "$HOME/.local/share/error404-media-console/error404-terminal.png" ]]; then
+        ERROR404_IMAGE="$HOME/.local/share/error404-media-console/error404-terminal.png"
+    elif [[ -f "$SCRIPT_DIR/docs/assets/error404-terminal.png" ]]; then
+        ERROR404_IMAGE="$SCRIPT_DIR/docs/assets/error404-terminal.png"
+    fi
+fi
 
 if [[ -z "${HOME:-}" ]]; then
     printf 'Erro: a variável HOME não está definida.\n' >&2
@@ -95,6 +104,35 @@ restore_terminal() {
 }
 trap restore_terminal EXIT
 pause() { printf '\nPressione ENTER para voltar ao menu...'; IFS= read -r _ || exit 0; }
+
+center_block() {
+    local width=$1 columns padding line
+    columns=$(tput cols 2>/dev/null || printf '80')
+    padding=$(( (columns - width) / 2 ))
+    ((padding < 0)) && padding=0
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        printf '%*s%s\n' "$padding" '' "$line"
+    done
+}
+
+render_error404_header() {
+    if [[ "${YT_ERROR404_RENDER:-ascii}" == image && -t 1 && -f "$ERROR404_IMAGE" && $(command -v img2txt) ]]; then
+        img2txt --width=72 --height=12 --format=ansi "$ERROR404_IMAGE" | center_block 72
+    else
+        center_block 62 <<'BANNER'
+                 .-======================-.
+              .-'       .-''''-.           '-.
+            .'         /  .--.  \             '.
+           /          |  (404)  |               \
+          ;            \  '--'  /                ;
+          |             '-.__.-'                 |
+          ;       ERROR-404 // MEDIA CONSOLE     ;
+           \      O sinal foi perdido no caminho /
+            '.                                .'
+              '-.__________________________.-'
+BANNER
+    fi
+}
 
 check_dependencies() {
     local missing=()
@@ -284,7 +322,8 @@ check_dependencies
 while true; do
     screen
     printf '%s%s' "$GREEN" "$BOLD"
-    cat <<MENU
+    render_error404_header
+    center_block 62 <<MENU
 ┌──────────────────────────────────────────────────────────────┐
 │                 ${RED}404${GREEN}                                          │
 │       ${RED}ERROR404 // MEDIA CONSOLE${GREEN}                              │
