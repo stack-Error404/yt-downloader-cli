@@ -91,6 +91,78 @@ printf 'invalida\n\n0\n' |
 grep -Fq 'Opção inválida.' "$menu_output" || fail 'entrada inválida do menu'
 pass 'entrada inválida do menu'
 
+strip_ansi() { sed -E 's/\x1b\[[0-9;?]*[A-Za-z]//g'; }
+
+full=$(YT_PREVIEW=100x40 YT_PREVIEW_SEL=4 "$project_dir/yt")
+plain=$(strip_ansi <<<"$full")
+for expected in 'ERROR-404' 'ERROR404 // MEDIA CONSOLE' '[ v1.1.3 ]' 'status: online // select an option' \
+    ' 01  Vídeo MP4' ' 08  Atualizar dependências' ' 10  Usar cookies do navegador' ' 00  Sair' 'downloads: '; do
+    [[ "$plain" == *"$expected"* ]] || fail "visual do menu sem: $expected"
+done
+[[ $(grep -Fc $'\033[48;2;93;255;56m' <<<"$full") -eq 1 ]] || fail 'deve haver exatamente uma linha selecionada'
+grep -F $'\033[48;2;93;255;56m' <<<"$full" | strip_ansi | grep -Fq '05  Escolher qualidade' || fail 'linha selecionada errada'
+[[ $(wc -l <<<"$full") -eq 34 ]] || fail 'quadro completo deveria ter 34 linhas'
+[[ $(YT_PREVIEW=80x30 "$project_dir/yt" | wc -l) -eq 29 ]] || fail 'quadro compacto deveria ter 29 linhas'
+[[ $(YT_PREVIEW=70x24 "$project_dir/yt" | wc -l) -eq 23 ]] || fail 'quadro mínimo deveria ter 23 linhas'
+if YT_PREVIEW=40x10 "$project_dir/yt" >/dev/null 2>&1; then fail 'janela pequena deveria ser recusada'; fi
+pass 'visual do menu (moldura, banner e seleção)'
+
+if command -v python3 >/dev/null 2>&1; then
+    python3 - "$project_dir/yt" <<'PY' || fail 'moldura desalinhada'
+import os, re, subprocess, sys
+for size in ('100x40', '80x30', '70x24', '60x40'):
+    out = subprocess.run([sys.argv[1]], env=dict(os.environ, YT_PREVIEW=size, LC_ALL='C.UTF-8'),
+                         capture_output=True, text=True, check=True).stdout.splitlines()
+    widths = {len(re.sub(r'\x1b\[[0-9;]*m', '', line)) for line in out}
+    assert len(widths) == 1, (size, widths)
+PY
+    pass 'todas as linhas da moldura têm a mesma largura'
+
+    : > "$log"
+    PATH="$fake_bin:$PATH" YT_DLP_LOG="$log" YT_BIN="$project_dir/yt" YT_DIR="$tmp_dir/pty" \
+        python3 - <<'PY' || fail 'menu interativo'
+import fcntl, os, pty, re, select, struct, sys, termios, time
+
+def session(steps):
+    env = {k: v for k, v in os.environ.items() if k != 'NO_COLOR'}
+    env.update(TERM='xterm-256color', LANG='C.UTF-8')
+    pid, fd = pty.fork()
+    if pid == 0:
+        os.execvpe(env['YT_BIN'], [env['YT_BIN'], '--download-dir', env['YT_DIR']], env)
+    fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack('HHHH', 40, 100, 0, 0))
+    seen = ''
+    for expect, keys in steps:
+        deadline = time.time() + 10
+        while expect not in re.sub(r'\x1b\[[0-9;?]*[A-Za-z]', '', seen):
+            if time.time() > deadline:
+                sys.exit(f'não apareceu: {expect!r}')
+            if select.select([fd], [], [], 0.1)[0]:
+                try:
+                    seen += os.read(fd, 65536).decode('utf-8', 'replace')
+                except OSError:
+                    break
+        time.sleep(0.1)
+        os.write(fd, keys.encode())
+        seen = ''
+    _, status = os.waitpid(pid, 0)
+    if os.waitstatus_to_exitcode(status) != 0:
+        sys.exit('o programa não terminou com sucesso')
+
+DOWN = '\x1b[B'
+# duas setas para baixo = "03 Playlist MP4"; depois link e saída
+session([('select an option', DOWN + DOWN + '\r'),
+         ('Cole o link', 'https://www.youtube.com/playlist?list=PLteste\r'),
+         ('Voltar ao menu', '0\r')])
+# número digitado (10) abre a tela de cookies; Enter vazio cancela; q sai
+session([('select an option', '10\r'), ('Cancelar', '\r'), ('select an option', 'q')])
+PY
+    grep -Fxq -- '--yes-playlist' "$log" || fail 'seta + Enter não chamou a opção 3'
+    grep -Fxq -- 'https://www.youtube.com/playlist?list=PLteste' "$log" || fail 'URL da playlist'
+    pass 'menu interativo (setas, número, Enter e q)'
+else
+    printf 'SKIP: python3 ausente; testes de moldura e menu interativo não executados\n'
+fi
+
 test_home="$tmp_dir/home"
 mkdir -p -- "$test_home"
 for run in 1 2; do

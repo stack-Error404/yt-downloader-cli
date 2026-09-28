@@ -88,6 +88,26 @@ cd yt-downloader-cli
 
 Os instaladores baixam o programa da tag fixa `v1.1.3` e validam o SHA-256 contra `checksums.sha256`. Isso evita mudanças silenciosas do arquivo instalado e detecta corrupção; não substitui a confiança no repositório ou uma assinatura criptográfica da release.
 
+## O menu
+
+O menu usa o visual do console ERROR-404: moldura, banner com o smiley em pontos Braille, o "404" em blocos e uma barra verde na opção selecionada. Funciona igual no Linux, no Termux e no Windows.
+
+| Tecla | Ação |
+| --- | --- |
+| `↑` `↓` (ou `k` `j`) | Move a seleção |
+| `Home` / `End` | Vai para a primeira / última opção |
+| `1`, `01`, `10`… | Seleciona a opção pelo número; confirme com `Enter` |
+| `Enter` | Executa a opção selecionada |
+| `q` | Sai |
+
+O tamanho do banner acompanha a janela: com 34 linhas ou mais aparece o smiley completo, com 29 a 33 linhas o banner compacto e, abaixo disso, só o menu. Se a janela for pequena demais, o terminal não tiver cores 24 bits/UTF-8 ou a entrada não for interativa, o programa usa o menu numerado simples, em que se digita o número e `Enter`. Para forçá-lo:
+
+```bash
+YT_MENU=simple yt
+```
+
+`NO_COLOR=1` também desativa o visual. Para conferir o quadro sem abrir o menu: `YT_PREVIEW=100x40 yt` (no PowerShell, `$env:YT_PREVIEW = '100x40'`). A arte do smiley foi gerada por `tools/gen-banner.py` a partir de `docs/assets/error404-red-john-dots.png`.
+
 ## Recursos
 
 | Opção | Ação |
@@ -101,6 +121,8 @@ Os instaladores baixam o programa da tag fixa `v1.1.3` e validam o SHA-256 contr
 | 7 | Abrir a pasta de downloads |
 | 8 | Atualizar somente `yt-dlp` e `ffmpeg` |
 | 9 | Ver informações do projeto |
+| 10 | Usar cookies do navegador |
+| 0 | Sair |
 
 Links de YouTube, TikTok, Instagram, Facebook e X/Twitter são identificados automaticamente para exibição no fluxo de download. A aceitação não depende de uma lista fixa: qualquer URL que o `yt-dlp` reconheça segue pelo caminho genérico, inclusive plataformas adicionadas futuramente ao `yt-dlp`. O suporte pode variar quando cada site altera sua estrutura.
 

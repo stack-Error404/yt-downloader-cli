@@ -50,5 +50,27 @@ if ($LASTEXITCODE -ne 0 -or ($version -join '').Trim() -ne 'yt 1.1.3') { throw '
 & $PowerShell -NoLogo -NoProfile -File $ScriptPath --nao-existe 2>$null
 if ($LASTEXITCODE -ne 2) { throw 'Argumento desconhecido deveria retornar 2' }
 
+$scriptBytes = [IO.File]::ReadAllBytes($ScriptPath)
+if ($scriptBytes.Length -lt 3 -or $scriptBytes[0] -ne 0xef -or $scriptBytes[1] -ne 0xbb -or $scriptBytes[2] -ne 0xbf) {
+    throw 'yt.ps1 precisa de BOM UTF-8: o Windows PowerShell 5.1 lê o arquivo como ANSI sem ele e quebra o visual do menu.'
+}
+
+$env:YT_PREVIEW = '100x40'
+$env:YT_PREVIEW_SEL = '4'
+$preview = & $PowerShell -NoLogo -NoProfile -File $ScriptPath
+$previewText = $preview -join "`n"
+foreach ($expected in 'ERROR404 // MEDIA CONSOLE', 'status: online // select an option', 'downloads: ') {
+    if (-not $previewText.Contains($expected)) { throw "Visual do menu sem: $expected" }
+}
+if ($preview.Count -ne 34) { throw "Quadro completo deveria ter 34 linhas (veio $($preview.Count))" }
+$selectedLines = @($preview | Where-Object { $_.Contains([string][char]27 + '[48;2;93;255;56m') })
+if ($selectedLines.Count -ne 1) { throw 'Deve haver exatamente uma linha selecionada' }
+$env:YT_PREVIEW = '80x30'
+if (@(& $PowerShell -NoLogo -NoProfile -File $ScriptPath).Count -ne 29) { throw 'Quadro compacto deveria ter 29 linhas' }
+$env:YT_PREVIEW = '40x10'
+& $PowerShell -NoLogo -NoProfile -File $ScriptPath 2>$null | Out-Null
+if ($LASTEXITCODE -ne 1) { throw 'Janela pequena deveria ser recusada' }
+Remove-Item Env:YT_PREVIEW, Env:YT_PREVIEW_SEL
+
 Write-Host 'Todos os testes PowerShell passaram.' -ForegroundColor Green
 exit 0

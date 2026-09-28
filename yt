@@ -5,16 +5,6 @@ set -u
 VERSION="1.1.3"
 AUTHOR="Error404"
 PROJECT_URL="https://github.com/stack-Error404/yt-downloader-cli"
-SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
-ERROR404_IMAGE="${YT_ERROR404_IMAGE:-}"
-if [[ -z "$ERROR404_IMAGE" ]]; then
-    if [[ -f "$HOME/.local/share/error404-media-console/error404-terminal.png" ]]; then
-        ERROR404_IMAGE="$HOME/.local/share/error404-media-console/error404-terminal.png"
-    elif [[ -f "$SCRIPT_DIR/docs/assets/error404-terminal.png" ]]; then
-        ERROR404_IMAGE="$SCRIPT_DIR/docs/assets/error404-terminal.png"
-    fi
-fi
-
 if [[ -z "${HOME:-}" ]]; then
     printf 'Erro: a variável HOME não está definida.\n' >&2
     exit 1
@@ -89,8 +79,8 @@ if [[ -n "${COOKIES_FROM_BROWSER:-}" ]]; then
 fi
 
 if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
-    CYAN=$'\033[38;2;57;255;20m'; GREEN=$'\033[38;2;57;255;20m'
-    RED=$'\033[38;2;255;36;70m'
+    CYAN=$'\033[38;2;94;231;255m'; GREEN=$'\033[38;2;93;255;56m'
+    RED=$'\033[38;2;255;45;70m'
     BG=$'\033[48;2;0;0;0m'; BOLD=$'\033[1m'; RESET=$'\033[0m'
 else
     CYAN=''; GREEN=''; RED=''; BG=''; BOLD=''; RESET=''
@@ -100,39 +90,10 @@ screen() {
     if [[ -t 1 ]]; then printf '%s\033[2J\033[H' "$BG"; fi
 }
 restore_terminal() {
-    if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then printf '\033[0m'; fi
+    if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then printf '\033[0m\033[?25h'; fi
 }
 trap restore_terminal EXIT
 pause() { printf '\nPressione ENTER para voltar ao menu...'; IFS= read -r _ || exit 0; }
-
-center_block() {
-    local width=$1 columns padding line
-    columns=$(tput cols 2>/dev/null || printf '80')
-    padding=$(( (columns - width) / 2 ))
-    ((padding < 0)) && padding=0
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        printf '%*s%s\n' "$padding" '' "$line"
-    done
-}
-
-render_error404_header() {
-    if [[ "${YT_ERROR404_RENDER:-ascii}" == image && -t 1 && -f "$ERROR404_IMAGE" && $(command -v img2txt) ]]; then
-        img2txt --width=72 --height=12 --format=ansi "$ERROR404_IMAGE" | center_block 72
-    else
-        center_block 62 <<'BANNER'
-                 .-======================-.
-              .-'       .-''''-.           '-.
-            .'         /  .--.  \             '.
-           /          |  (404)  |               \
-          ;            \  '--'  /                ;
-          |             '-.__.-'                 |
-          ;       ERROR-404 // MEDIA CONSOLE     ;
-           \      O sinal foi perdido no caminho /
-            '.                                .'
-              '-.__________________________.-'
-BANNER
-    fi
-}
 
 check_dependencies() {
     local missing=()
@@ -184,6 +145,7 @@ open_folder() {
         xdg-open "$DOWNLOAD_DIR" >/dev/null 2>&1 &
     else
         printf 'Pasta: %s\n' "$DOWNLOAD_DIR"
+        return 1
     fi
 }
 
@@ -210,7 +172,7 @@ after_download() {
 configure_browser_cookies() {
     local choice browser
     screen
-    printf '%s%sUsar cookies do navegador%s\n\n' "$CYAN" "$BOLD" "$RESET"
+    printf '%s%sUsar cookies do navegador%s\n\n' "$RED" "$BOLD" "$RESET"
     printf 'Use esta opção se o site pedir login ou indicar que o conteúdo é privado.\n'
     printf 'Feche o navegador escolhido antes de continuar.\n\n'
     printf '[1] Firefox  [2] Chrome  [3] Edge  [4] Brave  [0] Cancelar\nEscolha: '
@@ -234,7 +196,7 @@ download() {
     local mode=$1 playlist=$2 status=0
     local -a args=(--ignore-config --embed-metadata)
     screen
-    printf '%s%s%s%s\n\n' "$CYAN" "$BOLD" "$mode" "$RESET"
+    printf '%s%s%s%s\n\n' "$RED" "$BOLD" "$mode" "$RESET"
     if ! ask_url; then pause; return; fi
     local platform
     platform=$(detect_platform "$URL")
@@ -257,7 +219,7 @@ download() {
 download_tiktok() {
     local status=0
     screen
-    printf '%s%sTikTok (vídeo individual)%s\n\n' "$CYAN" "$BOLD" "$RESET"
+    printf '%s%sTikTok (vídeo individual)%s\n\n' "$RED" "$BOLD" "$RESET"
     if ! ask_url; then pause; return; fi
     printf '\nIniciando...\n\n'
     yt-dlp "${COOKIES_ARGS[@]}" --ignore-config --no-playlist --embed-metadata \
@@ -270,7 +232,7 @@ download_tiktok() {
 choose_quality() {
     local video audio selector status=0
     screen
-    printf '%s%sEscolher qualidade (vídeo individual MP4)%s\n\n' "$CYAN" "$BOLD" "$RESET"
+    printf '%s%sEscolher qualidade (vídeo individual MP4)%s\n\n' "$RED" "$BOLD" "$RESET"
     if ! ask_url; then pause; return; fi
     printf '\nBuscando formatos disponíveis...\n\n'
     if ! yt-dlp "${COOKIES_ARGS[@]}" --ignore-config --no-playlist -F -- "$URL"; then
@@ -295,7 +257,7 @@ choose_quality() {
 
 about() {
     screen
-    printf '%s%s[ ERROR404 // MEDIA CONSOLE ]  v%s%s\n\n' "$CYAN" "$BOLD" "$VERSION" "$RESET"
+    printf '%s%s[ ERROR404 // MEDIA CONSOLE ]  v%s%s\n\n' "$RED" "$BOLD" "$VERSION" "$RESET"
     printf 'Criado por %s\n' "$AUTHOR"
     printf 'Projeto: %s\n' "$PROJECT_URL"
     printf 'YouTube, TikTok e outras plataformas reconhecidas pelo yt-dlp.\n'
@@ -307,7 +269,7 @@ about() {
 
 update_dependencies() {
     screen
-    printf '%sAtualizar somente yt-dlp e ffmpeg%s\n\n' "$CYAN" "$RESET"
+    printf '%sAtualizar somente yt-dlp e ffmpeg%s\n\n' "$RED" "$RESET"
     if [[ -n "${TERMUX_VERSION:-}" ]] && command -v pkg >/dev/null 2>&1; then
         pkg install -y python-yt-dlp ffmpeg
     elif command -v pacman >/dev/null 2>&1; then
@@ -318,34 +280,319 @@ update_dependencies() {
     pause
 }
 
-check_dependencies
-while true; do
+# ---------------------------------------------------------------------------
+# Interface do menu (visual ERROR-404): moldura, banner, barra de seleção.
+# Precisa de terminal com cores 24 bits e UTF-8; caso contrário, o menu
+# numerado simples é usado (também com NO_COLOR=1, sem TTY ou YT_MENU=simple).
+# ---------------------------------------------------------------------------
+shopt -s extglob
+ESC=$'\033'
+
+MENU_LABELS=("Vídeo MP4" "Áudio MP3" "Playlist MP4" "Playlist MP3" "Escolher qualidade"
+    "TikTok" "Abrir pasta de downloads" "Atualizar dependências" "Sobre"
+    "Usar cookies do navegador" "Sair")
+MENU_CODES=(1 2 3 4 5 6 7 8 9 10 0)
+
+# Smiley em 14 colunas x 11 linhas de pontos Braille (gerado por tools/gen-banner.py).
+# Cada célula tem 3 dígitos hexadecimais: máscara Braille (2) e intensidade do vermelho (1).
+SMILEY_ROWS=(
+    '000 000 000 36a f6a ffa f6a e4a c49 408 000 000 000 000'
+    '000 000 000 000 c0b c4d 000 099 19b 3ba a6c 40d 000 000'
+    '000 808 f4b 1ec 0ba 097 000 000 000 000 000 39b c6c 000'
+    '80b 7ec 019 000 c08 409 000 80a e4c e4b 409 000 39a 46c'
+    'feb 078 000 bea 1ba 0bb 000 08a 017 b9a 03b 000 000 ff9'
+    'b9a c79 000 b8a 80a 000 000 000 80a f8a 000 000 a0c 07c'
+    '000 3bc e6b 788 b89 1fc 76b 3fa 0bc 017 80b f4a 0fb 000'
+    '000 000 08b 3bb f6a e4b e7b e4b 34b 7eb 0bc 000 000 000'
+    '000 000 000 000 189 000 000 000 000 47a 000 000 000 000'
+    '000 000 000 000 000 000 000 000 000 479 000 000 000 000'
+    '000 000 000 000 000 000 000 000 000 078 000 000 000 000'
+)
+ART404=(
+    '██  ██  ████  ██  ██'
+    '██  ██ ██  ██ ██  ██'
+    '██████ ██  ██ ██████'
+    '    ██ ██  ██     ██'
+    '    ██  ████      ██'
+)
+
+F_RESET="${ESC}[0m${ESC}[48;2;0;0;0m"
+F_BOLD="${ESC}[1m"
+C_BORDER="${ESC}[38;2;29;74;36m"
+C_LINE="${ESC}[38;2;58;74;64m"
+C_DIVIDER="${ESC}[38;2;76;32;38m"
+C_DIM="${ESC}[38;2;132;148;137m"
+C_RED="${ESC}[38;2;255;45;70m"
+C_PINK="${ESC}[38;2;255;51;85m"
+C_GREEN="${ESC}[38;2;93;255;56m"
+C_CYAN="${ESC}[38;2;94;231;255m"
+C_WHITE="${ESC}[38;2;228;238;229m"
+C_SELECTED="${ESC}[48;2;93;255;56m${ESC}[38;2;0;0;0m"
+
+SMILEY_LINES=()
+FRAME_LINES=()
+UI_W=76
+UI_PAD=''
+VP=''
+ROWS=24
+COLS=80
+
+utf8_ok() {
+    local t
+    printf -v t '\u2588'
+    ((${#t} == 1)) && return 0
+    export LC_ALL=C.UTF-8
+    printf -v t '\u2588'
+    ((${#t} == 1))
+}
+
+ui_wanted() {
+    [[ -t 0 && -t 1 && -z "${NO_COLOR:-}" && "${YT_MENU:-}" != simple ]] || return 1
+    [[ "${TERM:-dumb}" != dumb && "${TERM:-}" != linux ]] || return 1
+    utf8_ok
+}
+
+term_size() {
+    local size
+    size=$(stty size </dev/tty 2>/dev/null) || size=''
+    if [[ "$size" =~ ^([0-9]+)\ ([0-9]+)$ ]]; then
+        ROWS=${BASH_REMATCH[1]}; COLS=${BASH_REMATCH[2]}
+    else
+        ROWS=24; COLS=80
+    fi
+}
+
+# Converte o smiley em linhas ANSI: um caractere Braille por célula, cor pela intensidade.
+build_smiley() {
+    ((${#SMILEY_LINES[@]})) && return
+    local row line cell mask hex ch x
+    local -a cells=() level_fg=()
+    for ((x = 0; x < 16; x++)); do
+        level_fg[x]="${ESC}[38;2;$((x * 255 / 15));$((x * x * 40 / 225));$((x * x * 62 / 225))m"
+    done
+    for row in "${SMILEY_ROWS[@]}"; do
+        read -ra cells <<<"$row"
+        line=''
+        for cell in "${cells[@]}"; do
+            mask=$((16#${cell:0:2}))
+            if ((mask == 0)); then
+                line+=' '
+            else
+                printf -v hex '%04x' $((0x2800 + mask))
+                # shellcheck disable=SC2059
+                printf -v ch "\\u$hex"
+                line+="${level_fg[16#${cell:2:1}]}${ch}"
+            fi
+        done
+        SMILEY_LINES+=("$line$F_RESET")
+    done
+}
+
+# Preenche VP com o texto (que pode ter ANSI) completado com espaços até a largura visível $2.
+vis_pad() {
+    local plain=${1//$'\033'\[*([0-9;])m/}
+    local n=${#plain}
+    VP=$1
+    if ((n < $2)); then printf -v VP '%s%*s' "$1" $(($2 - n)) ''; fi
+    return 0
+}
+
+vis_center() {
+    local plain=${1//$'\033'\[*([0-9;])m/}
+    local left=$((($2 - ${#plain}) / 2))
+    ((left < 0)) && left=0
+    printf -v VP '%*s%s' "$left" '' "$1"
+}
+
+repeat_char() { # $1 = caractere, $2 = vezes → VP
+    printf -v VP '%*s' "$2" ''
+    VP=${VP// /$1}
+}
+
+add_line() { # $1 = conteúdo interno (será completado até UI_W colunas)
+    vis_pad "$1" "$UI_W"
+    FRAME_LINES+=("${UI_PAD}${C_BORDER}│${F_RESET}${VP}${C_BORDER}│${F_RESET}")
+}
+
+add_header_row() { # $1 = painel esquerdo, $2 = largura dele, $3 = painel direito
+    vis_pad "$1" "$2"
+    add_line "${VP}${C_DIVIDER}│${F_RESET}$3"
+}
+
+# Monta FRAME_LINES para um terminal COLS x ROWS com o item $1 selecionado.
+# Retorna 1 quando a janela é pequena demais para a moldura.
+build_frame() {
+    local sel=$1 header=0 total i rule short_dir max num label plain
+    UI_W=76
+    ((COLS - 2 < UI_W)) && UI_W=$((COLS - 2))
+    ((UI_W < 44)) && return 1
+    if ((UI_W >= 66 && ROWS >= 34)); then header=11
+    elif ((UI_W >= 66 && ROWS >= 29)); then header=6
+    fi
+    total=$((23 + header))
+    ((ROWS < total)) && return 1
+    printf -v UI_PAD '%*s' $(((COLS - UI_W - 2) / 2)) ''
+    FRAME_LINES=()
+    build_smiley
+
+    repeat_char '─' "$UI_W"
+    FRAME_LINES+=("${UI_PAD}${C_BORDER}┌${VP}┐${F_RESET}")
+    vis_pad " ${C_RED}●${F_RESET} ${C_GREEN}●${F_RESET} ${C_GREEN}●${F_RESET}" $((UI_W - 14))
+    add_line "${VP}${C_DIM}/dev/tty — yt ${F_RESET}"
+
+    if ((header == 11)); then
+        local lp right
+        printf -v lp '%*s' 8 ''
+        for ((i = 0; i < 11; i++)); do
+            case $i in
+                1|2|3|4|5) right="   ${C_PINK}${F_BOLD}${ART404[i - 1]}${F_RESET}" ;;
+                7) right="   ${C_WHITE}${F_BOLD}ERROR-404${F_RESET}" ;;
+                8) right="   ${C_DIM}O sinal foi perdido no caminho.${F_RESET}" ;;
+                9) right="   ${C_DIM}Console online.${F_RESET}" ;;
+                *) right='' ;;
+            esac
+            add_header_row "${lp}${SMILEY_LINES[i]}" 30 "$right"
+        done
+    elif ((header == 6)); then
+        local right left
+        for ((i = 0; i < 6; i++)); do
+            case $i in
+                2) right="   ${C_WHITE}${F_BOLD}ERROR-404${F_RESET}" ;;
+                3) right="   ${C_DIM}O sinal foi perdido no caminho.${F_RESET}" ;;
+                4) right="   ${C_DIM}Console online.${F_RESET}" ;;
+                *) right='' ;;
+            esac
+            left=''
+            ((i >= 1)) && left="   ${C_PINK}${F_BOLD}${ART404[i - 1]}${F_RESET}"
+            add_header_row "$left" 26 "$right"
+        done
+    fi
+
+    add_line ''
+    vis_center "${C_RED}${F_BOLD}ERROR404 // MEDIA CONSOLE${F_RESET}" "$UI_W"; add_line "$VP"
+    vis_center "${C_RED}[ v${VERSION} ]${F_RESET}" "$UI_W"; add_line "$VP"
+    repeat_char '─' $((UI_W - 4)); rule="  ${C_LINE}${VP}${F_RESET}"
+    add_line "$rule"
+    add_line "  ${C_CYAN}status: online // select an option${F_RESET}"
+    add_line ''
+    for ((i = 0; i < ${#MENU_CODES[@]}; i++)); do
+        printf -v num '%02d' "${MENU_CODES[i]}"
+        label=${MENU_LABELS[i]}
+        if ((i == sel)); then
+            plain=" ${num}  ${label}"
+            vis_pad "$plain" $((UI_W - 4))
+            add_line "  ${C_SELECTED}${VP}${F_RESET}"
+        else
+            add_line "   ${C_RED}${num}${C_GREEN}  ${label}${F_RESET}"
+        fi
+    done
+    add_line ''
+    add_line "$rule"
+    short_dir=$DOWNLOAD_DIR
+    [[ "$short_dir" == "$HOME"* ]] && short_dir="~${short_dir#"$HOME"}"
+    max=$((UI_W - 4 - 11 - 3))
+    if ((${#short_dir} > max)); then short_dir="…${short_dir: -$((max - 1))}"; fi
+    add_line "  ${C_DIM}downloads: ${short_dir}_ ${ESC}[5m${C_WHITE}█${F_RESET}"
+    repeat_char '─' "$UI_W"
+    FRAME_LINES+=("${UI_PAD}${C_BORDER}└${VP}┘${F_RESET}")
+}
+
+draw_frame() { # $1 = 1 para limpar a tela inteira antes (após redimensionar)
+    local out="${F_RESET}${ESC}[H" line i last=$((${#FRAME_LINES[@]} - 1))
+    [[ "$1" == 1 ]] && out+="${ESC}[2J"
+    for ((i = 0; i <= last; i++)); do
+        line=${FRAME_LINES[i]}
+        out+="${line}${ESC}[K"
+        ((i < last)) && out+=$'\n'
+    done
+    printf '%s%s[J' "$out" "$ESC"
+}
+
+# Menu com setas, j/k, Home/End, Enter e digitação do número (ex.: 1, 01, 10).
+# Define CHOICE com o código clássico da opção; retorna 1 se a janela não comporta o visual.
+menu_interactive() {
+    local sel=0 dirty=2 key seq numbuf='' n=${#MENU_CODES[@]} status i
+    printf '%s' "${ESC}[?25l"
+    trap 'dirty=2' WINCH
+    while true; do
+        if ((dirty)); then
+            term_size
+            if ! build_frame "$sel"; then
+                trap - WINCH; printf '%s' "${ESC}[?25h"
+                return 1
+            fi
+            if ((dirty == 2)); then draw_frame 1; else draw_frame 0; fi
+            dirty=0
+        fi
+        status=0
+        # O timeout deixa o trap de WINCH (redimensionamento) rodar sem esperar uma tecla.
+        IFS= read -rsn1 -t 0.5 key || status=$?
+        if ((status > 128)); then continue; fi
+        if ((status != 0)); then trap - WINCH; printf '%s' "${ESC}[?25h"; exit 0; fi
+        [[ "$key" == [0-9] ]] || numbuf=''
+        case "$key" in
+            "$ESC")
+                seq=''
+                IFS= read -rsn2 -t 0.05 seq || true
+                case "$seq" in
+                    '[A'|OA) sel=$(((sel + n - 1) % n)); dirty=1 ;;
+                    '[B'|OB) sel=$(((sel + 1) % n)); dirty=1 ;;
+                    '[H'|OH) sel=0; dirty=1 ;;
+                    '[F'|OF) sel=$((n - 1)); dirty=1 ;;
+                    '[1'|'[7') IFS= read -rsn1 -t 0.05 seq || true; sel=0; dirty=1 ;;
+                    '[4'|'[8') IFS= read -rsn1 -t 0.05 seq || true; sel=$((n - 1)); dirty=1 ;;
+                    '[5'|'[6') IFS= read -rsn1 -t 0.05 seq || true ;;
+                esac
+                ;;
+            k|K) sel=$(((sel + n - 1) % n)); dirty=1 ;;
+            j|J) sel=$(((sel + 1) % n)); dirty=1 ;;
+            q|Q|$'\004') CHOICE=0; break ;;
+            '') CHOICE=${MENU_CODES[sel]}; break ;;
+            [0-9])
+                numbuf+=$key
+                ((${#numbuf} > 2)) && numbuf=$key
+                for _try in 1 2; do
+                    for ((i = 0; i < n; i++)); do
+                        if ((10#${MENU_CODES[i]} == 10#$numbuf)); then sel=$i; dirty=1; break 2; fi
+                    done
+                    numbuf=$key
+                done
+                ;;
+        esac
+    done
+    trap - WINCH
+    printf '%s' "${ESC}[?25h"
+    return 0
+}
+
+menu_simple() {
+    local i num
     screen
-    printf '%s%s' "$GREEN" "$BOLD"
-    render_error404_header
-    center_block 62 <<MENU
-┌──────────────────────────────────────────────────────────────┐
-│                 ${RED}404${GREEN}                                          │
-│       ${RED}ERROR404 // MEDIA CONSOLE${GREEN}                              │
-│                    ${RED}[ v$VERSION ]${GREEN}                                │
-├──────────────────────────────────────────────────────────────┤
-│  ${GREEN}status: online${GREEN}                                              │
-│  ${GREEN}----------------------------------------------------------${GREEN}  │
-│  ${RED}1${GREEN}  Vídeo MP4                                                │
-│  ${RED}2${GREEN}  Áudio MP3                                                │
-│  ${RED}3${GREEN}  Playlist MP4                                             │
-│  ${RED}4${GREEN}  Playlist MP3                                             │
-│  ${RED}5${GREEN}  Escolher qualidade                                       │
-│  ${RED}6${GREEN}  TikTok                                                   │
-│  ${RED}7${GREEN}  Abrir pasta de downloads                                 │
-│  ${RED}8${GREEN}  Atualizar yt-dlp e ffmpeg                                │
-│  ${RED}9${GREEN}  Sobre                                                    │
-│  ${RED}10${GREEN} Usar cookies do navegador                                │
-│  ${RED}0${GREEN}  Sair                                                     │
-└──────────────────────────────────────────────────────────────┘
-MENU
+    printf '%s%sERROR404 // MEDIA CONSOLE  [ v%s ]%s\n\n' "$RED" "$BOLD" "$VERSION" "$RESET"
+    printf '%sstatus: online // select an option%s\n\n' "$CYAN" "$RESET"
+    for ((i = 0; i < ${#MENU_CODES[@]}; i++)); do
+        printf -v num '%02d' "${MENU_CODES[i]}"
+        printf '%s%s%s  %s%s\n' "$RED" "$num" "$GREEN" "${MENU_LABELS[i]}" "$RESET"
+    done
     printf '\nDownloads: %s\n\n%sEscolha: %s' "$DOWNLOAD_DIR" "$RED" "$GREEN"
-    IFS= read -r choice || exit 0
+}
+
+# Prévia de um quadro (usada em testes e para conferir o visual): YT_PREVIEW=100x40 yt
+preview_frame() {
+    local i last
+    if [[ "$YT_PREVIEW" =~ ^([0-9]+)x([0-9]+)$ ]]; then
+        COLS=${BASH_REMATCH[1]}; ROWS=${BASH_REMATCH[2]}
+    else
+        COLS=100; ROWS=40
+    fi
+    build_frame "${YT_PREVIEW_SEL:-0}" || { printf 'Janela pequena demais para a prévia.\n' >&2; exit 1; }
+    last=$((${#FRAME_LINES[@]} - 1))
+    for ((i = 0; i <= last; i++)); do printf '%s\n' "${FRAME_LINES[i]}"; done
+}
+
+run_choice() {
+    local choice=$1
+    case "$choice" in 0[0-9]) choice=${choice#0} ;; esac
     case "$choice" in
         1) download MP4 no ;;
         2) download MP3 no ;;
@@ -353,11 +600,28 @@ MENU
         4) download MP3 yes ;;
         5) choose_quality ;;
         6) download_tiktok ;;
-        7) open_folder ;;
+        7) open_folder || pause ;;
         8) update_dependencies ;;
         9) about ;;
         10) configure_browser_cookies ;;
         0) exit 0 ;;
         *) printf 'Opção inválida.\n'; pause ;;
     esac
+}
+
+if [[ -n "${YT_PREVIEW:-}" ]]; then
+    utf8_ok || true
+    preview_frame
+    exit 0
+fi
+
+check_dependencies
+while true; do
+    if ui_wanted && menu_interactive; then
+        choice=$CHOICE
+    else
+        menu_simple
+        IFS= read -r choice || exit 0
+    fi
+    run_choice "$choice"
 done
