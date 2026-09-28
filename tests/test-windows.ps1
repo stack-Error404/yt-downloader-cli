@@ -45,7 +45,7 @@ $help = & $PowerShell -NoLogo -NoProfile -File $ScriptPath --help
 if ($LASTEXITCODE -ne 0 -or ($help -join "`n") -notmatch 'Uso: yt') { throw 'Falha em --help' }
 
 $version = & $PowerShell -NoLogo -NoProfile -File $ScriptPath --version
-if ($LASTEXITCODE -ne 0 -or ($version -join '').Trim() -ne 'yt 1.1.3') { throw 'Falha em --version' }
+if ($LASTEXITCODE -ne 0 -or ($version -join '').Trim() -ne 'yt 1.2.0') { throw 'Falha em --version' }
 
 & $PowerShell -NoLogo -NoProfile -File $ScriptPath --nao-existe 2>$null
 if ($LASTEXITCODE -ne 2) { throw 'Argumento desconhecido deveria retornar 2' }
@@ -62,15 +62,33 @@ $previewText = $preview -join "`n"
 foreach ($expected in 'ERROR404 // MEDIA CONSOLE', 'status: online // select an option', 'downloads: ') {
     if (-not $previewText.Contains($expected)) { throw "Visual do menu sem: $expected" }
 }
-if ($preview.Count -ne 34) { throw "Quadro completo deveria ter 34 linhas (veio $($preview.Count))" }
+if ($preview.Count -ne 35) { throw "Quadro completo deveria ter 35 linhas (veio $($preview.Count))" }
 $selectedLines = @($preview | Where-Object { $_.Contains([string][char]27 + '[48;2;93;255;56m') })
 if ($selectedLines.Count -ne 1) { throw 'Deve haver exatamente uma linha selecionada' }
 $env:YT_PREVIEW = '80x30'
-if (@(& $PowerShell -NoLogo -NoProfile -File $ScriptPath).Count -ne 29) { throw 'Quadro compacto deveria ter 29 linhas' }
+if (@(& $PowerShell -NoLogo -NoProfile -File $ScriptPath).Count -ne 30) { throw 'Quadro compacto deveria ter 30 linhas' }
 $env:YT_PREVIEW = '40x10'
 & $PowerShell -NoLogo -NoProfile -File $ScriptPath 2>$null | Out-Null
 if ($LASTEXITCODE -ne 1) { throw 'Janela pequena deveria ser recusada' }
 Remove-Item Env:YT_PREVIEW, Env:YT_PREVIEW_SEL
+
+$updateHome = Join-Path ([IO.Path]::GetTempPath()) ('yt-update-lock-' + [Guid]::NewGuid().ToString('N'))
+$stateDir = Join-Path $updateHome 'Error404MediaConsole'
+New-Item -ItemType Directory -Force -Path $stateDir | Out-Null
+Set-Content -LiteralPath (Join-Path $stateDir 'min-version.txt') -Value '9.9.9' -NoNewline
+$originalLocalAppData = $env:LOCALAPPDATA
+$env:LOCALAPPDATA = $updateHome
+try {
+    & $PowerShell -NoLogo -NoProfile -File $ScriptPath --version 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 1) { throw 'Cópia substituída por atualização confirmada deveria ser bloqueada' }
+    Set-Content -LiteralPath (Join-Path $stateDir 'min-version.txt') -Value '0.0.1' -NoNewline
+    $unlocked = & $PowerShell -NoLogo -NoProfile -File $ScriptPath --version
+    if ($LASTEXITCODE -ne 0 -or ($unlocked -join '').Trim() -ne 'yt 1.2.0') { throw 'min-version anterior à instalada não deveria bloquear' }
+} finally {
+    $env:LOCALAPPDATA = $originalLocalAppData
+    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -LiteralPath $updateHome
+}
+Write-Host 'Bloqueio local de versão substituída (min-version) OK' -ForegroundColor Green
 
 Write-Host 'Todos os testes PowerShell passaram.' -ForegroundColor Green
 exit 0

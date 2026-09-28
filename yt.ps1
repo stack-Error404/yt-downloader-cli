@@ -4,10 +4,34 @@
 )
 
 $ErrorActionPreference = 'Stop'
-$Version = '1.1.3'
+$Version = '1.2.0'
 $ProjectUrl = 'https://github.com/stack-Error404/yt-downloader-cli'
+$GitHubApiTags = 'https://api.github.com/repos/stack-Error404/yt-downloader-cli/tags?per_page=100'
+$GitHubRaw = 'https://raw.githubusercontent.com/stack-Error404/yt-downloader-cli'
 $DownloadDir = if ($env:YT_DOWNLOAD_DIR) { $env:YT_DOWNLOAD_DIR } else { Join-Path (Join-Path $HOME 'Downloads') 'YouTube' }
 $CookiesFromBrowser = ''
+
+$StateDir = if ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA 'Error404MediaConsole' } else { Join-Path $HOME '.local/share/error404-media-console' }
+$MinVersionFile = Join-Path $StateDir 'min-version.txt'
+
+function Test-VersionGt([string]$A, [string]$B) {
+    try { return ([version]$A) -gt ([version]$B) } catch { return $false }
+}
+
+# Bloqueia a execução se uma atualização já confirmada tornou esta cópia obsoleta.
+# É uma checagem local (sem rede), então nunca falha por indisponibilidade de internet.
+function Assert-MinVersion {
+    if (-not (Test-Path -LiteralPath $MinVersionFile)) { return }
+    $min = (Get-Content -LiteralPath $MinVersionFile -Raw -ErrorAction SilentlyContinue)
+    if (-not $min) { return }
+    $min = $min.Trim()
+    if ($min -and (Test-VersionGt $min $Version)) {
+        [Console]::Error.WriteLine("Esta cópia (v$Version) foi substituída por uma atualização já confirmada (v$min ou mais recente).")
+        [Console]::Error.WriteLine('Abra um novo PowerShell (o PATH já deve apontar para a versão nova) ou reinstale com install.ps1.')
+        exit 1
+    }
+}
+Assert-MinVersion
 
 function Show-Usage {
     @"
@@ -225,6 +249,104 @@ function Update-Dependencies {
     Pause-Menu
 }
 
+# Baixa a tag $Tag (versão $NewVersion), valida o SHA-256 e a sintaxe, e só então
+# substitui o script instalado. Nunca executa o conteúdo baixado antes dessa validação.
+function Install-Update([string]$Tag, [string]$NewVersion) {
+    $selfPath = $PSCommandPath
+    if (-not $selfPath) { $selfPath = $MyInvocation.MyCommand.Path }
+    if (-not $selfPath -or -not (Test-Path -LiteralPath $selfPath)) {
+        Write-Host 'Não foi possível localizar o arquivo do script para atualizar.' -ForegroundColor Red
+        return $false
+    }
+    $dir = Split-Path -Parent $selfPath
+    $tmp = Join-Path $dir ('.yt.update.' + [Guid]::NewGuid().ToString('N') + '.ps1')
+    try {
+        $baseUrl = "$GitHubRaw/$Tag"
+        Invoke-WebRequest -Uri "$baseUrl/yt.ps1" -OutFile $tmp -TimeoutSec 30 -ErrorAction Stop | Out-Null
+        $manifest = (Invoke-WebRequest -Uri "$baseUrl/checksums.sha256" -TimeoutSec 30 -ErrorAction Stop).Content
+        $match = [regex]::Match($manifest, '(?im)^([0-9a-f]{64})\s+\*?yt\.ps1$')
+        if (-not $match.Success) {
+            Write-Host 'Checksum de yt.ps1 não encontrado na versão remota.' -ForegroundColor Red
+            return $false
+        }
+        $expected = $match.Groups[1].Value
+        $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $tmp).Hash
+        if ($actual -ne $expected) {
+            Write-Host 'Falha de integridade: SHA-256 inesperado para a nova versão.' -ForegroundColor Red
+            return $false
+        }
+        $tokens = $null
+        $parseErrors = $null
+        [void][System.Management.Automation.Language.Parser]::ParseFile($tmp, [ref]$tokens, [ref]$parseErrors)
+        if ($parseErrors.Count) {
+            Write-Host 'A nova versão baixada tem erro de sintaxe; atualização cancelada.' -ForegroundColor Red
+            return $false
+        }
+        Move-Item -Force -LiteralPath $tmp -Destination $selfPath
+        New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
+        Set-Content -LiteralPath $MinVersionFile -Value $NewVersion -NoNewline
+        return $true
+    } catch {
+        Write-Host "Falha ao baixar ou instalar a nova versão: $($_.Exception.Message)" -ForegroundColor Red
+        return $false
+    } finally {
+        Remove-Item -Force -ErrorAction SilentlyContinue -LiteralPath $tmp
+    }
+}
+
+function Get-LatestVersionTag {
+    try {
+        $tags = Invoke-RestMethod -Uri $GitHubApiTags -Headers @{ 'User-Agent' = 'yt-downloader-cli'; 'Accept' = 'application/vnd.github+json' } -TimeoutSec 10 -ErrorAction Stop
+    } catch {
+        return $null
+    }
+    $candidates = @($tags | Where-Object { $_.name -match '^v\d+\.\d+\.\d+$' } | ForEach-Object { $_.name })
+    if ($candidates.Count -eq 0) { return '' }
+    $best = $candidates[0]
+    foreach ($t in $candidates) {
+        if (Test-VersionGt ($t.TrimStart('v')) ($best.TrimStart('v'))) { $best = $t }
+    }
+    return $best
+}
+
+function Invoke-SelfUpdate {
+    Clear-Menu
+    Write-Host 'Verificar atualização do yt' -ForegroundColor Red
+    Write-Host "Consultando $ProjectUrl...`n"
+    $tag = Get-LatestVersionTag
+    if ($null -eq $tag) {
+        Write-Host 'Não foi possível verificar atualizações agora (rede indisponível ou GitHub inacessível).' -ForegroundColor Red
+        Write-Host "Tente novamente mais tarde; sua instalação atual (v$Version) continua funcionando normalmente."
+        Pause-Menu
+        return
+    }
+    if ($tag -eq '') {
+        Write-Host 'Não foi possível encontrar tags de versão no GitHub.' -ForegroundColor Red
+        Pause-Menu
+        return
+    }
+    $latest = $tag.TrimStart('v')
+    if (-not (Test-VersionGt $latest $Version)) {
+        Write-Host "Você já está na versão mais recente (v$Version)." -ForegroundColor Green
+        Pause-Menu
+        return
+    }
+    Write-Host "`nNova versão disponível: v$latest (instalada: v$Version)" -ForegroundColor Red
+    Write-Host "Detalhes: $ProjectUrl/tree/$tag" -ForegroundColor Cyan
+    $resp = Read-Host "`nAtualizar agora? [s/N]"
+    if ($resp -notmatch '^[sSyY]$') {
+        Write-Host 'Atualização cancelada.'
+        Pause-Menu
+        return
+    }
+    if (Install-Update $tag $latest) {
+        Write-Host "`nAtualizado para v$latest." -ForegroundColor Green
+        Write-Host 'Encerrando para aplicar a nova versão — execute yt novamente.'
+        exit 0
+    }
+    Pause-Menu
+}
+
 function Show-About {
     Clear-Menu
     Write-Host "ERROR404 // MEDIA CONSOLE v$Version" -ForegroundColor Red
@@ -259,9 +381,9 @@ $CSelected = "${Esc}[48;2;93;255;56m${Esc}[38;2;0;0;0m"
 $MenuLabels = @(
     'Vídeo MP4', 'Áudio MP3', 'Playlist MP4', 'Playlist MP3', 'Escolher qualidade',
     'TikTok', 'Abrir pasta de downloads', 'Atualizar dependências', 'Sobre',
-    'Usar cookies do navegador', 'Sair'
+    'Usar cookies do navegador', 'Verificar atualização do yt', 'Sair'
 )
-$MenuCodes = @(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0)
+$MenuCodes = @(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0)
 
 # Smiley em 14 colunas x 11 linhas de pontos Braille (gerado por tools/gen-banner.py).
 # Cada célula tem 3 dígitos hexadecimais: máscara Braille (2) e intensidade do vermelho (1).
@@ -336,7 +458,8 @@ function New-Frame([int]$Selected, [int]$Cols, [int]$Rows) {
     $header = 0
     if ($w -ge 66 -and $Rows -ge 34) { $header = 11 }
     elseif ($w -ge 66 -and $Rows -ge 29) { $header = 6 }
-    if ($Rows -lt 23 + $header) { return $null }
+    $n = $MenuCodes.Count
+    if ($Rows -lt (12 + $n + $header)) { return $null }
 
     $pad = ' ' * [int][Math]::Floor(($Cols - $w - 2) / 2)
     $lines = New-Object 'System.Collections.Generic.List[string]'
@@ -516,6 +639,7 @@ function Invoke-MenuChoice([string]$Choice) {
         '8' { Update-Dependencies }
         '9' { Show-About }
         '10' { Configure-BrowserCookies }
+        '11' { Invoke-SelfUpdate }
         '0' { exit 0 }
         default { Write-Host 'Opção inválida.' -ForegroundColor Red; Pause-Menu }
     }

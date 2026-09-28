@@ -13,11 +13,11 @@ pass 'sintaxe Bash'
 
 help_output=$("$project_dir/yt" --help)
 [[ "$help_output" == *'Uso: yt [opções]'* ]] || fail '--help'
-[[ "$("$project_dir/yt" --version)" == 'yt 1.1.3' ]] || fail '--version'
+[[ "$("$project_dir/yt" --version)" == 'yt 1.2.0' ]] || fail '--version'
 if "$project_dir/yt" --nao-existe >/dev/null 2>&1; then fail 'argumento desconhecido'; fi
 if "$project_dir/yt" --download-dir --cookies-from-browser >/dev/null 2>&1; then fail 'valor de pasta interpretado como flag'; fi
 if "$project_dir/yt" --cookies-from-browser --download-dir >/dev/null 2>&1; then fail 'valor de navegador interpretado como flag'; fi
-[[ "$(bash "$project_dir/install.sh" --version)" == 'install.sh 1.1.3' ]] || fail 'versão do instalador'
+[[ "$(bash "$project_dir/install.sh" --version)" == 'install.sh 1.2.0' ]] || fail 'versão do instalador'
 bash "$project_dir/install.sh" --help | grep -Fq 'Uso: bash install.sh' || fail 'ajuda do instalador'
 if bash "$project_dir/install.sh" --nao-existe >/dev/null 2>&1; then fail 'argumento desconhecido do instalador'; fi
 pass 'argumentos do CLI'
@@ -95,15 +95,16 @@ strip_ansi() { sed -E 's/\x1b\[[0-9;?]*[A-Za-z]//g'; }
 
 full=$(YT_PREVIEW=100x40 YT_PREVIEW_SEL=4 "$project_dir/yt")
 plain=$(strip_ansi <<<"$full")
-for expected in 'ERROR-404' 'ERROR404 // MEDIA CONSOLE' '[ v1.1.3 ]' 'status: online // select an option' \
-    ' 01  Vídeo MP4' ' 08  Atualizar dependências' ' 10  Usar cookies do navegador' ' 00  Sair' 'downloads: '; do
+for expected in 'ERROR-404' 'ERROR404 // MEDIA CONSOLE' '[ v1.2.0 ]' 'status: online // select an option' \
+    ' 01  Vídeo MP4' ' 08  Atualizar dependências' ' 10  Usar cookies do navegador' \
+    ' 11  Verificar atualização do yt' ' 00  Sair' 'downloads: '; do
     [[ "$plain" == *"$expected"* ]] || fail "visual do menu sem: $expected"
 done
 [[ $(grep -Fc $'\033[48;2;93;255;56m' <<<"$full") -eq 1 ]] || fail 'deve haver exatamente uma linha selecionada'
 grep -F $'\033[48;2;93;255;56m' <<<"$full" | strip_ansi | grep -Fq '05  Escolher qualidade' || fail 'linha selecionada errada'
-[[ $(wc -l <<<"$full") -eq 34 ]] || fail 'quadro completo deveria ter 34 linhas'
-[[ $(YT_PREVIEW=80x30 "$project_dir/yt" | wc -l) -eq 29 ]] || fail 'quadro compacto deveria ter 29 linhas'
-[[ $(YT_PREVIEW=70x24 "$project_dir/yt" | wc -l) -eq 23 ]] || fail 'quadro mínimo deveria ter 23 linhas'
+[[ $(wc -l <<<"$full") -eq 35 ]] || fail 'quadro completo deveria ter 35 linhas'
+[[ $(YT_PREVIEW=80x30 "$project_dir/yt" | wc -l) -eq 30 ]] || fail 'quadro compacto deveria ter 30 linhas'
+[[ $(YT_PREVIEW=70x24 "$project_dir/yt" | wc -l) -eq 24 ]] || fail 'quadro mínimo deveria ter 24 linhas'
 if YT_PREVIEW=40x10 "$project_dir/yt" >/dev/null 2>&1; then fail 'janela pequena deveria ser recusada'; fi
 pass 'visual do menu (moldura, banner e seleção)'
 
@@ -175,5 +176,36 @@ path_line="export PATH=\"\$HOME/.local/bin:\$PATH\""
 [[ $(grep -Fc "$path_line" "$test_home/.bashrc") -eq 1 ]] || fail 'PATH idempotente'
 if grep -Fq 'Escolha:' "$tmp_dir/install-1.out"; then fail 'instalador abriu o menu'; fi
 pass 'instalação local idempotente e sem autoexecução'
+
+if command -v fish >/dev/null 2>&1; then
+    fish_home="$tmp_dir/home-fish"
+    mkdir -p -- "$fish_home"
+    for run in 1 2; do
+        fish_status=0
+        HOME="$fish_home" SHELL=/bin/fish PATH="$fake_bin:$PATH" \
+            bash "$project_dir/install.sh" </dev/null > "$tmp_dir/install-fish-$run.out" 2>&1 || fish_status=$?
+        ((fish_status == 0)) || fail "instalador com SHELL=fish deveria sair com 0 na execução $run (saiu com $fish_status)"
+        grep -Fq 'instalado em:' "$tmp_dir/install-fish-$run.out" || fail "mensagem final ausente na execução $run com SHELL=fish"
+    done
+    pass 'instalação idempotente com SHELL=/bin/fish (segunda execução não aborta)'
+else
+    printf 'SKIP: fish ausente; teste de instalação com SHELL=fish não executado\n'
+fi
+
+update_home="$tmp_dir/home-update-lock"
+mkdir -p -- "$update_home/.local/share/error404-media-console"
+printf '9.9.9\n' > "$update_home/.local/share/error404-media-console/min-version"
+if HOME="$update_home" "$project_dir/yt" --version >/dev/null 2>&1; then
+    fail 'cópia substituída por atualização confirmada deveria ser bloqueada'
+fi
+lock_msg=$(HOME="$update_home" "$project_dir/yt" --version 2>&1 >/dev/null) || true
+[[ "$lock_msg" == *'foi substituída por uma atualização já confirmada'* ]] || fail 'mensagem de bloqueio ausente'
+printf '0.0.1\n' > "$update_home/.local/share/error404-media-console/min-version"
+[[ "$(HOME="$update_home" "$project_dir/yt" --version)" == 'yt 1.2.0' ]] \
+    || fail 'min-version anterior à instalada não deveria bloquear'
+rm -f -- "$update_home/.local/share/error404-media-console/min-version"
+[[ "$(HOME="$update_home" "$project_dir/yt" --version)" == 'yt 1.2.0' ]] \
+    || fail 'sem min-version não deveria bloquear'
+pass 'bloqueio local de versão substituída (min-version)'
 
 printf 'Todos os testes Bash passaram.\n'

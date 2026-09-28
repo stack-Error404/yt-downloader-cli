@@ -86,7 +86,17 @@ cd yt-downloader-cli
 .\install.ps1
 ```
 
-Os instaladores baixam o programa da tag fixa `v1.1.3` e validam o SHA-256 contra `checksums.sha256`. Isso evita mudanças silenciosas do arquivo instalado e detecta corrupção; não substitui a confiança no repositório ou uma assinatura criptográfica da release.
+Os instaladores baixam o programa da tag fixa `v1.2.0` e validam o SHA-256 contra `checksums.sha256`. Isso evita mudanças silenciosas do arquivo instalado e detecta corrupção; não substitui a confiança no repositório ou uma assinatura criptográfica da release.
+
+## Atualização pelo próprio programa
+
+O menu tem a opção **11 — Verificar atualização do yt**, que consulta as tags de versão do repositório no GitHub (a mesma fonte usada pelos instaladores) e mostra a versão instalada e a mais recente disponível antes de pedir confirmação explícita. Nada é baixado ou executado sem essa confirmação.
+
+Ao confirmar, o programa baixa o script da tag escolhida, valida o SHA-256 contra `checksums.sha256` daquela tag e checa a sintaxe antes de substituir o arquivo instalado (o mesmo fluxo de verificação do instalador). Depois disso o programa se encerra para garantir que a versão antiga, já carregada na memória do processo atual, não continue em uso — é necessário executar `yt` novamente para usar a versão nova.
+
+Toda atualização confirmada grava a versão mínima aceita em um arquivo local (`~/.local/share/error404-media-console/min-version` no Linux/Termux, `%LOCALAPPDATA%\Error404MediaConsole\min-version.txt` no Windows). Qualquer cópia do script mais antiga que essa versão mínima se recusa a rodar, mesmo que tenha sido instalada por outro caminho ou fique parada em outra pasta — isso impede que uma versão revogada continue em uso após a atualização. Essa checagem é local e não depende de rede, então uma falha temporária de internet nunca bloqueia o uso da versão atual; ela só impede rodar uma versão já substituída por uma atualização que o usuário confirmou.
+
+Se o GitHub estiver inacessível no momento da verificação, o programa avisa e mantém a versão atual funcionando normalmente — não há bloqueio nem tentativa de instalar algo sem confirmação.
 
 ## O menu
 
@@ -122,6 +132,7 @@ YT_MENU=simple yt
 | 8 | Atualizar somente `yt-dlp` e `ffmpeg` |
 | 9 | Ver informações do projeto |
 | 10 | Usar cookies do navegador |
+| 11 | Verificar atualização do yt |
 | 0 | Sair |
 
 Links de YouTube, TikTok, Instagram, Facebook e X/Twitter são identificados automaticamente para exibição no fluxo de download. A aceitação não depende de uma lista fixa: qualquer URL que o `yt-dlp` reconheça segue pelo caminho genérico, inclusive plataformas adicionadas futuramente ao `yt-dlp`. O suporte pode variar quando cada site altera sua estrutura.

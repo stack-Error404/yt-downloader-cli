@@ -2,7 +2,7 @@
 # Instalador para Arch/CachyOS, outras distribuições Linux e Android/Termux.
 set -euo pipefail
 
-VERSION="1.1.3"
+VERSION="1.2.0"
 REPO_RAW="https://raw.githubusercontent.com/stack-Error404/yt-downloader-cli"
 REPO_REF="${YT_REPO_REF:-v$VERSION}"
 SCRIPT_PATH="${BASH_SOURCE[0]:-}"
@@ -127,7 +127,10 @@ path_line="export PATH=\"\$HOME/.local/bin:\$PATH\""
 if [[ "$INSTALL_DIR" == "$HOME/.local/bin" ]]; then
     case "$(basename "${SHELL:-/bin/bash}")" in
         fish)
-            if command -v fish >/dev/null 2>&1; then fish -c 'fish_add_path -U ~/.local/bin'; fi ;;
+            if command -v fish >/dev/null 2>&1; then
+                fish -c 'fish_add_path -U ~/.local/bin' \
+                    || printf 'Aviso: não foi possível confirmar a atualização do PATH no fish (talvez já esteja configurado).\n' >&2
+            fi ;;
         zsh)
             touch "$HOME/.zshrc"
             grep -Fxq "$path_line" "$HOME/.zshrc" 2>/dev/null || printf '\n%s\n' "$path_line" >> "$HOME/.zshrc" ;;

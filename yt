@@ -2,13 +2,51 @@
 # Error404 // Media Console
 set -u
 
-VERSION="1.1.3"
+VERSION="1.2.0"
 AUTHOR="Error404"
 PROJECT_URL="https://github.com/stack-Error404/yt-downloader-cli"
+GITHUB_API_TAGS="https://api.github.com/repos/stack-Error404/yt-downloader-cli/tags?per_page=100"
+GITHUB_RAW="https://raw.githubusercontent.com/stack-Error404/yt-downloader-cli"
 if [[ -z "${HOME:-}" ]]; then
     printf 'Erro: a variável HOME não está definida.\n' >&2
     exit 1
 fi
+
+STATE_DIR="$HOME/.local/share/error404-media-console"
+MIN_VERSION_FILE="$STATE_DIR/min-version"
+
+# Compara versões "X.Y.Z" (sem sufixos). Retorna 0 (verdadeiro) se $1 > $2.
+version_gt() {
+    local a=$1 b=$2
+    local -a av bv
+    IFS=. read -r -a av <<<"$a"
+    IFS=. read -r -a bv <<<"$b"
+    local i x y
+    for ((i = 0; i < 3; i++)); do
+        x=${av[i]:-0}; y=${bv[i]:-0}
+        [[ "$x" =~ ^[0-9]+$ ]] || x=0
+        [[ "$y" =~ ^[0-9]+$ ]] || y=0
+        if ((10#$x > 10#$y)); then return 0; fi
+        if ((10#$x < 10#$y)); then return 1; fi
+    done
+    return 1
+}
+
+# Bloqueia a execução se uma atualização já confirmada tornou esta cópia obsoleta.
+# É uma checagem local (sem rede), então nunca falha por indisponibilidade de internet.
+enforce_min_version() {
+    [[ -f "$MIN_VERSION_FILE" ]] || return 0
+    local min
+    min=$(<"$MIN_VERSION_FILE")
+    min=${min//[$' \t\r\n']/}
+    [[ -n "$min" ]] || return 0
+    if version_gt "$min" "$VERSION"; then
+        printf 'Esta cópia (v%s) foi substituída por uma atualização já confirmada (v%s ou mais recente).\n' "$VERSION" "$min" >&2
+        printf 'Abra um novo terminal (o PATH já deve apontar para a versão nova) ou reinstale com install.sh.\n' >&2
+        exit 1
+    fi
+}
+enforce_min_version
 
 default_download_dir="$HOME/Downloads/YouTube"
 if [[ -n "${TERMUX_VERSION:-}" && -d "$HOME/storage/downloads" ]]; then
@@ -280,6 +318,120 @@ update_dependencies() {
     pause
 }
 
+resolve_self_path() {
+    local src=${BASH_SOURCE[0]:-} dir
+    [[ -n "$src" ]] || return 1
+    dir=$(cd -- "$(dirname -- "$src")" 2>/dev/null && pwd -P) || return 1
+    [[ -f "$dir/$(basename -- "$src")" ]] || return 1
+    printf '%s/%s' "$dir" "$(basename -- "$src")"
+}
+
+# Baixa a tag $1 (versão $2), valida o SHA-256 e a sintaxe, e só então substitui
+# o script instalado. Nunca executa o conteúdo baixado antes dessa validação.
+install_update() {
+    local tag=$1 newv=$2 self_path base_url tmp checksum_tmp expected actual dir
+
+    self_path=$(resolve_self_path) || {
+        printf '%sNão foi possível localizar o arquivo do script para atualizar.%s\n' "$RED" "$RESET"
+        return 1
+    }
+    dir=$(dirname -- "$self_path")
+    if [[ ! -w "$self_path" || ! -w "$dir" ]]; then
+        printf '%sSem permissão de escrita em %s. Rode a atualização com o usuário dono da instalação.%s\n' "$RED" "$self_path" "$RESET"
+        return 1
+    fi
+    command -v curl >/dev/null 2>&1 || { printf '%scurl é necessário para atualizar.%s\n' "$RED" "$RESET"; return 1; }
+    command -v sha256sum >/dev/null 2>&1 || { printf '%ssha256sum é necessário para atualizar.%s\n' "$RED" "$RESET"; return 1; }
+
+    tmp=$(mktemp "$dir/.yt.update.XXXXXXXX") || return 1
+    checksum_tmp=$(mktemp "$dir/.yt.update-checksums.XXXXXXXX") || { rm -f -- "$tmp"; return 1; }
+    trap 'rm -f -- "$tmp" "$checksum_tmp"' RETURN
+
+    base_url="$GITHUB_RAW/$tag"
+    if ! curl -fL --retry 2 --max-time 20 --proto '=https' --tlsv1.2 "$base_url/yt" -o "$tmp" 2>/dev/null; then
+        printf '%sFalha ao baixar a nova versão (rede indisponível).%s\n' "$RED" "$RESET"
+        return 1
+    fi
+    if ! curl -fL --retry 2 --max-time 20 --proto '=https' --tlsv1.2 "$base_url/checksums.sha256" -o "$checksum_tmp" 2>/dev/null; then
+        printf '%sFalha ao baixar o checksum da nova versão.%s\n' "$RED" "$RESET"
+        return 1
+    fi
+    expected=$(awk '$2 == "yt" { print $1; exit }' "$checksum_tmp")
+    if [[ -z "$expected" ]]; then
+        printf '%sChecksum de yt não encontrado na versão remota.%s\n' "$RED" "$RESET"
+        return 1
+    fi
+    actual=$(sha256sum "$tmp"); actual=${actual%% *}
+    if [[ "$actual" != "$expected" ]]; then
+        printf '%sFalha de integridade: SHA-256 inesperado para a nova versão.%s\n' "$RED" "$RESET"
+        return 1
+    fi
+    if ! bash -n "$tmp"; then
+        printf '%sA nova versão baixada tem erro de sintaxe; atualização cancelada.%s\n' "$RED" "$RESET"
+        return 1
+    fi
+
+    chmod 755 "$tmp"
+    if ! mv -f -- "$tmp" "$self_path"; then
+        printf '%sFalha ao instalar a nova versão em %s.%s\n' "$RED" "$self_path" "$RESET"
+        return 1
+    fi
+    mkdir -p -- "$STATE_DIR" 2>/dev/null
+    printf '%s\n' "$newv" > "$STATE_DIR/min-version" 2>/dev/null
+    return 0
+}
+
+self_update() {
+    local tags_json tag latest resp
+    local -a candidate_tags=()
+    screen
+    printf '%s%sVerificar atualização do yt%s\n\n' "$RED" "$BOLD" "$RESET"
+    printf 'Consultando %s...\n' "$PROJECT_URL"
+    tags_json=$(curl -fsSL --retry 2 --max-time 10 --proto '=https' --tlsv1.2 \
+        -H 'Accept: application/vnd.github+json' "$GITHUB_API_TAGS" 2>/dev/null)
+    if [[ -z "$tags_json" ]]; then
+        printf '\n%sNão foi possível verificar atualizações agora (rede indisponível ou GitHub inacessível).%s\n' "$RED" "$RESET"
+        printf 'Tente novamente mais tarde; sua instalação atual (v%s) continua funcionando normalmente.\n' "$VERSION"
+        pause; return
+    fi
+    mapfile -t candidate_tags < <(printf '%s' "$tags_json" \
+        | grep -oE '"name"[[:space:]]*:[[:space:]]*"v[0-9]+\.[0-9]+\.[0-9]+"' \
+        | sed -E 's/.*"(v[0-9]+\.[0-9]+\.[0-9]+)"/\1/')
+    if ((${#candidate_tags[@]} == 0)); then
+        printf '\n%sNão foi possível encontrar tags de versão no GitHub.%s\n' "$RED" "$RESET"
+        pause; return
+    fi
+    tag=${candidate_tags[0]}
+    local t
+    for t in "${candidate_tags[@]}"; do
+        version_gt "${t#v}" "${tag#v}" && tag=$t
+    done
+    latest=${tag#v}
+    if ! version_gt "$latest" "$VERSION"; then
+        printf '\n%sVocê já está na versão mais recente (v%s).%s\n' "$GREEN" "$VERSION" "$RESET"
+        pause; return
+    fi
+
+    printf '\n%s%s┌── Nova versão disponível ──%s\n' "$RED" "$BOLD" "$RESET"
+    printf '%s│%s Instalada:  v%s\n' "$RED" "$RESET" "$VERSION"
+    printf '%s│%s Disponível: %sv%s%s\n' "$RED" "$RESET" "$GREEN" "$latest" "$RESET"
+    printf '%s│%s Detalhes: %s/tree/%s\n' "$RED" "$RESET" "$PROJECT_URL" "$tag"
+    printf '%s└──────────────────────────%s\n\n' "$RED" "$RESET"
+    printf 'Atualizar agora? [s/N]: '
+    IFS= read -r resp || { pause; return; }
+    case "$resp" in
+        s|S|y|Y) ;;
+        *) printf 'Atualização cancelada.\n'; pause; return ;;
+    esac
+
+    if ! install_update "$tag" "$latest"; then
+        pause; return
+    fi
+    printf '\n%s✓ Atualizado para v%s.%s\n' "$GREEN" "$latest" "$RESET"
+    printf 'Encerrando para aplicar a nova versão — execute "yt" novamente.\n'
+    exit 0
+}
+
 # ---------------------------------------------------------------------------
 # Interface do menu (visual ERROR-404): moldura, banner, barra de seleção.
 # Precisa de terminal com cores 24 bits e UTF-8; caso contrário, o menu
@@ -290,8 +442,8 @@ ESC=$'\033'
 
 MENU_LABELS=("Vídeo MP4" "Áudio MP3" "Playlist MP4" "Playlist MP3" "Escolher qualidade"
     "TikTok" "Abrir pasta de downloads" "Atualizar dependências" "Sobre"
-    "Usar cookies do navegador" "Sair")
-MENU_CODES=(1 2 3 4 5 6 7 8 9 10 0)
+    "Usar cookies do navegador" "Verificar atualização do yt" "Sair")
+MENU_CODES=(1 2 3 4 5 6 7 8 9 10 11 0)
 
 # Smiley em 14 colunas x 11 linhas de pontos Braille (gerado por tools/gen-banner.py).
 # Cada célula tem 3 dígitos hexadecimais: máscara Braille (2) e intensidade do vermelho (1).
@@ -422,14 +574,15 @@ add_header_row() { # $1 = painel esquerdo, $2 = largura dele, $3 = painel direit
 # Monta FRAME_LINES para um terminal COLS x ROWS com o item $1 selecionado.
 # Retorna 1 quando a janela é pequena demais para a moldura.
 build_frame() {
-    local sel=$1 header=0 total i rule short_dir max num label plain
+    local sel=$1 header=0 total n i rule short_dir max num label plain
     UI_W=76
     ((COLS - 2 < UI_W)) && UI_W=$((COLS - 2))
     ((UI_W < 44)) && return 1
     if ((UI_W >= 66 && ROWS >= 34)); then header=11
     elif ((UI_W >= 66 && ROWS >= 29)); then header=6
     fi
-    total=$((23 + header))
+    n=${#MENU_CODES[@]}
+    total=$((12 + n + header))
     ((ROWS < total)) && return 1
     printf -v UI_PAD '%*s' $(((COLS - UI_W - 2) / 2)) ''
     FRAME_LINES=()
@@ -604,6 +757,7 @@ run_choice() {
         8) update_dependencies ;;
         9) about ;;
         10) configure_browser_cookies ;;
+        11) self_update ;;
         0) exit 0 ;;
         *) printf 'Opção inválida.\n'; pause ;;
     esac
