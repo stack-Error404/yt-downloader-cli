@@ -240,19 +240,25 @@ Assert-Dependencies
 while ($true) {
     Clear-Menu
     Write-Host @"
-ERROR404 // MEDIA CONSOLE  [ v$Version ]
-
-1  Vídeo MP4
-2  Áudio MP3
-3  Playlist MP4
-4  Playlist MP3
-5  Escolher qualidade
-6  TikTok
-7  Abrir pasta de downloads
-8  Atualizar yt-dlp e ffmpeg
-9  Sobre
-10 Usar cookies do navegador
-0  Sair
+┌──────────────────────────────────────────────────────────────┐
+│                 404                                          │
+│       ERROR404 // MEDIA CONSOLE                              │
+│                    [ v$Version ]                                │
+├──────────────────────────────────────────────────────────────┤
+│  status: online                                              │
+│  ----------------------------------------------------------  │
+│  1  Vídeo MP4                                                │
+│  2  Áudio MP3                                                │
+│  3  Playlist MP4                                             │
+│  4  Playlist MP3                                             │
+│  5  Escolher qualidade                                       │
+│  6  TikTok                                                   │
+│  7  Abrir pasta de downloads                                 │
+│  8  Atualizar yt-dlp e ffmpeg                                │
+│  9  Sobre                                                    │
+│  10 Usar cookies do navegador                                │
+│  0  Sair                                                     │
+└──────────────────────────────────────────────────────────────┘
 "@ -ForegroundColor Green
     Write-Host "Downloads: $DownloadDir`n"
     $choice = Read-Host 'Escolha'

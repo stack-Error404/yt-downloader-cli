@@ -285,24 +285,25 @@ while true; do
     screen
     printf '%s%s' "$GREEN" "$BOLD"
     cat <<MENU
-╔══════════════════════════════════════════╗
-║         ${RED}ERROR404 // MEDIA CONSOLE${GREEN}        ║
-║             ${RED}[ v$VERSION ]${GREEN}                   ║
-╠══════════════════════════════════════════╣
-║  status: online                          ║
-║  --------------------------------------  ║
-║  ${RED}1${GREEN}  Vídeo MP4                            ║
-║  ${RED}2${GREEN}  Áudio MP3                            ║
-║  ${RED}3${GREEN}  Playlist MP4                         ║
-║  ${RED}4${GREEN}  Playlist MP3                         ║
-║  ${RED}5${GREEN}  Escolher qualidade                   ║
-║  ${RED}6${GREEN}  TikTok                               ║
-║  ${RED}7${GREEN}  Abrir pasta de downloads             ║
-║  ${RED}8${GREEN}  Atualizar yt-dlp e ffmpeg            ║
-║  ${RED}9${GREEN}  Sobre                                ║
-║  ${RED}10${GREEN} Usar cookies do navegador            ║
-║  ${RED}0${GREEN}  Sair                                 ║
-╚══════════════════════════════════════════╝
+┌──────────────────────────────────────────────────────────────┐
+│                 ${RED}404${GREEN}                                          │
+│       ${RED}ERROR404 // MEDIA CONSOLE${GREEN}                              │
+│                    ${RED}[ v$VERSION ]${GREEN}                                │
+├──────────────────────────────────────────────────────────────┤
+│  ${GREEN}status: online${GREEN}                                              │
+│  ${GREEN}----------------------------------------------------------${GREEN}  │
+│  ${RED}1${GREEN}  Vídeo MP4                                                │
+│  ${RED}2${GREEN}  Áudio MP3                                                │
+│  ${RED}3${GREEN}  Playlist MP4                                             │
+│  ${RED}4${GREEN}  Playlist MP3                                             │
+│  ${RED}5${GREEN}  Escolher qualidade                                       │
+│  ${RED}6${GREEN}  TikTok                                                   │
+│  ${RED}7${GREEN}  Abrir pasta de downloads                                 │
+│  ${RED}8${GREEN}  Atualizar yt-dlp e ffmpeg                                │
+│  ${RED}9${GREEN}  Sobre                                                    │
+│  ${RED}10${GREEN} Usar cookies do navegador                                │
+│  ${RED}0${GREEN}  Sair                                                     │
+└──────────────────────────────────────────────────────────────┘
 MENU
     printf '\nDownloads: %s\n\n%sEscolha: %s' "$DOWNLOAD_DIR" "$RED" "$GREEN"
     IFS= read -r choice || exit 0
